@@ -1,0 +1,335 @@
+---
+title: "Checking and tiding up the climate data"
+author: "Junqi ZHU"
+output:
+  html_document: default
+---
+
+```{r, warning=FALSE, echo=FALSE, tidy=TRUE, error=FALSE, message=FALSE}
+ rm(list = ls())
+    {
+    library(plyr)
+    l_ply(list('tidyverse','readxl','tidyr','readr','dplyr','ggplot2','broom','ggthemes','plotly','purrr',
+               'reshape2','cowplot','grid', 'reshape2','lubridate', 'RColorBrewer', 'datacheck', 'R.utils'), 
+          require, character.only = T)
+    # tidyverse_update(recursive = FALSE) #updating packages
+    #get the current working directory
+    MainDir <- list(PROJHOME = normalizePath(getwd()))
+    # Input and output directory data file location
+    ExpData = file.path(MainDir, 'ExpData')
+    # figure output directory, mainly the the place for paper writing 
+    FigureOutput = file.path(MainDir, 'Figures')
+    
+    # Output directory, final results except figures, like statistics, and intermediate data set
+    IntermediateResults = file.path(MainDir, 'Intermediate results')  
+    SupportingFunctions = file.path(MainDir, 'Supporting functions')
+    # CustomizedFunctions = file.path('E:/Programming_lang/R_language/Function_library/')
+    CustomizedFunctions = file.path('/mnt/sda/Programming_lang/R_language/Function_library/')
+   # CustomizedFunctions = file.path('d:/Programming language/R language/Customized function library/')
+   # CustomizedFunctions = file.path('/powerplant/workspace/hrmjxz/Programming_lang/R_language/Function_library/')
+    
+    IntermediateResults = file.path(MainDir, 'Intermediate results')  
+    SupportingFunctions = file.path(MainDir, 'Supporting functions')
+    # Load all functions
+    source(file.path(CustomizedFunctions,'Customized_functions_for_climate.R'))   
+    # lsf.str()  #list of functions
+    } 
+```
+
+# A remind of the subject that you are working on
+```{r}
+current.region <- 'Site1002_OYB'
+current.subject <- ''
+# current.year <- '18_19'
+site = "OYB"
+lastYear = '2021'
+output.name <- paste(current.region, current.subject, sep = '')
+output.name
+
+```
+
+## Load the data
+```{r, warning=FALSE, echo=FALSE, error=FALSE, message=FALSE}
+options(dplyr.width = Inf, dplyr.print_min = 10)
+
+hourly.data.names <- c("id",	"year",	"day",	"hour",	"mean.temp", "meanrh", "mean.leaf.wetness",
+                        "rain.tot", "mean.grass.temp",	"min.grass.temp",	"mean.soil.temp", 
+                        "min.soil.semp",	"solar.rad",	"wind.speed",	"wind.dir",	"pet")
+
+
+hourly.data <- 
+  read_csv(file.path(ExpData, 'Site1002_OYB_Hourly.csv'), 
+           col_names = F) %>% 
+  slice(-c(1:7)) %>% 
+  select(1:16) %>%
+  setNames(hourly.data.names) %>% 
+  mutate_all(., funs(as.numeric(as.character(.)))) %>% 
+  distinct(year,day,hour, .keep_all = T) %>% 
+  # filter(year>= 2020) %>% 
+  select(-solar.rad)
+
+glimpse(hourly.data)
+# last(hourly.data$year)
+
+```
+
+## create a complete records of days and hours
+
+```{r, warning=FALSE, echo=FALSE, error=FALSE, message=FALSE}
+
+first.day <- first(hourly.data$day)
+first.year <- first(hourly.data$year)
+
+last.day <- last(hourly.data$day)
+last.year <- last(hourly.data$year)
+
+start.date <- as.Date(first.day, origin = paste(first.year-1, 12, 31, sep = '-'))
+end.date <- as.Date(last.day, origin = paste(last.year-1, 12, 31, sep = '-'))
+
+
+yday(end.date)
+chour <-c(0,100,200,300,400,500,600,700,800,900,1000,1100,1200,
+          1300,1400,1500,1600,1700,1800,1900,2000,2100,2200,2300)
+
+complete.year.day <- 
+  data_frame(date = seq.Date(from = start.date,to = end.date, by = 'day')) %>% 
+  mutate(year = year(date), day.of.year = yday(date)) 
+
+ complete.year.day.hour<-  merge(complete.year.day,chour,all=TRUE)
+ # data.frame(complete.year.day.hour)
+names (complete.year.day.hour) = c("date", "year", "day","hour")
+
+
+glimpse(complete.year.day.hour)
+
+```
+
+# Check the missing data and replace missing value
+```{r, fig.width=15, fig.height=25,echo=FALSE}
+
+names(hourly.data) = c("stn.no.","year", "day" ,   "hour" ,    "mean.ta"  ,      
+"mean.rh" ,           "mean.leaf.wetness", "rain.tot" ,         "mean.grass.temp",   "min.grass.temp",   
+"mean.soil.temp",    "min.soil.semp" ,   "mean.wind.speed.m.s"  ,      "wind.dir" ,        
+ "pet")
+
+
+
+complete.hourly <- 
+  right_join(hourly.data, complete.year.day.hour, by = c('year','day', 'hour')) %>% 
+   # mutate_at('mean.solar.rad.w.m2',funs(replace(., .< 0, 0))) %>% 
+  mutate_at('mean.ta',funs(replace(., .< -10, NA))) %>% 
+   mutate_at('mean.rh',funs(replace(., .< 0, 0))) %>% 
+   mutate_if(is.numeric,funs(replace(.,is.nan(.),NA))) %>% 
+   group_by(day,hour) %>%
+   
+   mutate_at('mean.rh',funs(replace(.,is.na(.),mean(.,na.rm=TRUE))))%>%
+   mutate_at('mean.ta',funs(replace(.,is.na(.),mean(.,na.rm=TRUE))))%>%
+   mutate_at('mean.wind.speed.m.s',funs(replace(.,is.na(.),mean(.,na.rm=TRUE))))%>%
+   mutate_at('rain.tot',funs(replace(.,is.na(.),mean(.,na.rm=TRUE))))%>%
+   ungroup(.) %>% 
+   mutate(mean.rh = if_else(mean.rh > 100, 100, mean.rh)) %>% 
+  drop_na(year) %>% 
+  arrange(year, day, hour) %>% 
+  mutate(hour = hour/100) %>%
+  mutate( hour= if_else(hour==24, 0, hour)) 
+   #names(climate.data.hourly)
+
+  glimpse(complete.hourly)
+#write.csv(complete.hourly, file.path(IntermediateResults, paste(output.name, '.csv',sep = '')))
+
+  
+
+#names(hourly.data)
+
+  # View(hourly.data.hourly)
+```
+
+# combine with blenheim radiation data
+## add the missing radiation data from the blenheim data
+#day	hour	mean.ta	mean.rh	total.radiation.umol.m2.s	CO2.ppm	mean.wind.speed.m.s	swp.MPa	year	stn.no.
+```{r,echo=FALSE, error=FALSE, message=FALSE, warning=FALSE}
+# relative humidity data are mainly missing from the data
+blenheim.radiation <- 
+  tbl_df(read.csv(file.path(IntermediateResults, 
+                            'MRL_Hourly_New.csv'), header = TRUE))  %>% 
+  select(year, day, hour, mean.solar.rad.w.m2) %>% 
+  arrange(year, day, hour) %>% 
+  group_by(day, hour) %>% 
+  mutate_at('mean.solar.rad.w.m2',funs(replace(.,is.na(.),mean(.,na.rm=TRUE)))) %>% 
+  mutate_at('mean.solar.rad.w.m2',funs(replace(., .<= 1, mean(.,na.rm=TRUE)))) %>% 
+  ungroup() 
+  
+  blenheim.radiation %>% 
+    filter(is.na(mean.solar.rad.w.m2))
+  
+glimpse(blenheim.radiation)
+
+complete.radiation <-
+  left_join(complete.hourly, blenheim.radiation, by = c('year','day', 'hour')) %>% 
+  drop_na(mean.solar.rad.w.m2)
+
+
+ # short_summary(complete.radiation)  
+
+ complete.radiation %>% 
+   filter(is.na(mean.solar.rad.w.m2))
+```
+
+# organize the data for input into GroIMP
+```{r, fig.width=15, fig.height=25,echo=FALSE}
+climate.data.hourly.new <-
+  complete.radiation %>%
+  arrange(year,day,hour) %>%
+  # mutate(total.radiation.umol.m2.s = as.numeric(mean.solar.rad.w.m2) * WATT_TO_PPFD) %>%
+  mutate(mean.wind.speed.m.s=as.numeric(mean.wind.speed.m.s)) %>%
+  mutate(mean.ta=as.numeric(mean.ta)) %>%
+  # mutate(stn.no.=60) %>%
+  # mutate(CO2.ppm = 400, swp.MPa = -0.2, mean.rh = mean.rh/100) %>%
+  select(year, day, hour, mean.ta, mean.rh, mean.solar.rad.w.m2, mean.wind.speed.m.s, rain.tot) %>%
+  rename(total.rain = rain.tot)
+  #filter((year == 2019))
+#
+# write_csv(climate.data.hourly.new, file.path(IntermediateResults,
+#                     paste('OYB.climate.data.hourly.csv',sep = '')))
+# range(climate.data.hourly.new$mean.ta)
+
+#names(hourly.data.new)
+
+```
+
+#calculating the daily mean
+
+```{r,echo=FALSE, error=FALSE, message=FALSE, warning=FALSE}
+
+ climate.data.daily.cal <-
+  climate.data.hourly.new %>% 
+  select(year, day, hour,total.rain,mean.ta, mean.rh,mean.solar.rad.w.m2,mean.wind.speed.m.s) %>%
+  mutate(vpd = VPD((mean.ta), mean.rh/100)) %>% 
+  group_by(year, day) %>% 
+  summarise_all(list(mean=mean,min=min, max=max, sum=sum), na.rm = T) %>% 
+  mutate(daily.solar.rad.mj.m2 = mean.solar.rad.w.m2_mean * 3600 *24 /1e6 ) %>%
+  select(year, day, total.rain_sum, mean.ta_max, mean.ta_min,mean.ta_mean,
+         daily.solar.rad.mj.m2, mean.wind.speed.m.s_mean, mean.rh_mean, vpd_mean) %>% 
+  rename(Tmin = mean.ta_min, 
+         Tmax = mean.ta_max,
+         Tmean = mean.ta_mean,
+         totalRain = total.rain_sum,
+         Rad = daily.solar.rad.mj.m2, 
+         RH  = mean.rh_mean,
+         Wind = mean.wind.speed.m.s_mean, 
+         vpd = vpd_mean) %>% 
+  mutate(ET0 = calcDailyET0(Rad, Tmean, Wind, vpd)) %>% 
+  mutate(ET_Rain = ET0 - totalRain) %>% 
+  mutate(station = 'OYB') %>% 
+  mutate(vineyard = case_when(station == "Blenheim" ~ "NA",
+                             TRUE ~ station)) %>% 
+  mutate(region = "Marlborough") %>% 
+  rename(doy = day) 
+  # filter(year>=lastYear)
+
+
+glimpse(climate.data.daily.cal)
+
+write_csv(climate.data.daily.cal, 
+          file.path(IntermediateResults, paste(output.name, '.daily.cal.csv',sep = '')))
+
+```
+
+
+## Load the existing organized data and update the current site
+```{r, warning=FALSE, echo=FALSE, error=FALSE, message=FALSE}
+
+ daily.data <-
+  read_csv(file.path(IntermediateResults, 'MetData_latest.csv'),guess_max = 1000) %>%
+  filter(!(station == site & year>=lastYear))
+
+ daily.data %>%
+   filter(station ==site & year == lastYear)
+
+# glimpse(daily.data)
+
+
+
+```
+
+#join the data
+```{r, fig.width=15, fig.height=25,echo=FALSE}
+
+full.data <-
+    bind_rows(daily.data, climate.data.daily.cal)
+
+# short_summary(full.data)
+
+ write_csv(full.data, file.path(IntermediateResults, 'MetData_latest.csv'))
+
+# write_tsv(full.data, file.path(IntermediateResults, paste(output.name, "met", sep = '.')))
+
+```
+
+#APSIM output
+```{r, fig.width=15, fig.height=25,echo=FALSE}
+
+apsim <- 
+  climate.data.daily.cal %>% 
+  filter(station=="OYB") %>% 
+  select(year,doy,totalRain,Tmax, Tmin, Rad,Wind,RH,vpd) %>% 
+  mutate(totalRain= round(totalRain, 2),
+         Tmax = round(Tmax, 2), 
+         Tmin = round(Tmin, 2), 
+         Rad = round(Rad, 2), 
+         Wind = round(Wind, 2), 
+         RH = round(RH, 2), 
+         vpd = round(vpd,2))
+glimpse(apsim)
+
+
+
+fileName <- "Site1002_OYB.met"
+
+f <- file(paste0(IntermediateResults,"/", fileName), "w")
+    
+    cat(
+      "[weather.met.weather] \r\n Site = OysterBay", "\r\n",
+      "Latitude = -41.51343",    "\r\n",
+      "Longitude = 173.75983", "\r\n",
+      "tav=12.92  !annual  average  ambient  temperature", "\r\n",
+      "amp=14.81  !annual  amplitud  in  mean  monthly  temperature", "\r\n",    
+      "year  day  rain  maxt  mint  radn  wind rh vpd", "\r\n",
+      "()  ()  (mm)  (oC)  (oC)  (MJ/m2/d)  (m/s) (%) (kpa)", "\r\n",
+      
+      file= f, append = T)
+    
+    write.table(apsim, file = f, append = TRUE, quote = FALSE,
+                sep = " ", eol = "\r\n", col.names = F, row.names=F)
+    # 
+    close(f)
+
+
+# write_tsv(full.data, file.path(IntermediateResults, paste(output.name, "met", sep = '.')))
+
+# 
+# glimpse(apsim)
+# write.table(apsim, file.path(IntermediateResults, paste(output.name, "csv", sep = '.')), row.names = F, sep = ' ')
+
+# write_tsv(full.data, file.path(IntermediateResults, paste(output.name, "met", sep = '.')))
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
