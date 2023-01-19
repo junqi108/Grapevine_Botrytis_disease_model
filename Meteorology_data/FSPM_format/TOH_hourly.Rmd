@@ -1,0 +1,143 @@
+---
+title: "Checking and tiding up the climate data"
+author: "Junqi ZHU"
+output:
+  html_document: default
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r, warning=FALSE, echo=FALSE, tidy=TRUE, error=FALSE, message=FALSE}
+ rm(list = ls())
+    {
+    library(plyr)
+    l_ply(list('tidyverse','readxl','tidyr','dplyr','ggplot2','broom','ggthemes','plotly','purrr',
+               'reshape2','cowplot','grid', 'reshape2','lubridate', 'RColorBrewer', 'datacheck'), 
+          require, character.only = T)
+    # tidyverse_update(recursive = FALSE) #updating packages
+    #get the current working directory
+    MainDir <- list(PROJHOME = normalizePath(getwd()))
+    # Input and output directory data file location
+    ExpData = file.path(MainDir, 'ExpData')
+    # figure output directory, mainly the the place for paper writing 
+    FigureOutput = file.path(MainDir, 'Figures')
+    
+    # Output directory, final results except figures, like statistics, and intermediate data set
+    IntermediateResults = file.path(MainDir, 'Intermediate results')  
+    SupportingFunctions = file.path(MainDir, 'Supporting functions')
+    } 
+```
+
+# A remind of the subject that you are working on
+```{r}
+current.region <- 'MRL'
+current.subject <- 'Hourly_2000'
+
+output.name <- paste(current.region, current.subject, sep = '_')
+output.name
+
+```
+
+## Load the data
+```{r, warning=FALSE, echo=FALSE, error=FALSE, message=FALSE}
+climate.data.names <- c('ID','Stn.No.','Year','Day','Hour','Mean.Ta','Mean.wet.bulb.',	'Mean.leaf.Wet',
+                            'Total.Rain.mm.0.1','Grass.Min.Temp','Mean.10.cm.soil.temp',
+                            'Mean.20.cm.soil.temp','Mean.30.cm.soil.temp','Mean.100.cm.soil.temp',
+                            'Mean.Solar.Rad.w.m2','Mean.wind.speed.m.s', 'Mean.wind.direction.N','Total.Rain.mm.0.2',
+                            'Mean.RH','Mean.Ta.back.up','Sunshine.min', 'Soil.Moisture','Penman.ET')
+    
+    
+
+  climate.data <- read_csv(file.path(ExpData, 'Site_MRL_Hourly.csv')) %>% 
+  select(1:23) %>% 
+  slice(-c(1:6)) %>% 
+  setNames(tolower(climate.data.names)) %>% 
+  mutate_all(., funs( as.numeric(as.character(.)))) %>% 
+  distinct(year,day,hour, .keep_all = T)
+
+glimpse(climate.data)
+last(climate.data$year)
+
+```
+
+## create a complete records of days and hours
+
+```{r, warning=FALSE, echo=FALSE, error=FALSE, message=FALSE}
+
+first.day <- first(climate.data$day)
+first.year <- first(climate.data$year)
+
+last.day <- last(climate.data$day)
+last.year <- last(climate.data$year)
+
+start.date <- as.Date(first.day, origin = paste(first.year-1, 12, 31, sep = '-'))
+end.date <- as.Date(last.day, origin = paste(last.year-1, 12, 31, sep = '-'))
+
+
+yday(end.date)
+chour <-c(0,100,200,300,400,500,600,700,800,900,1000,1100,1200,
+          1300,1400,1500,1600,1700,1800,1900,2000,2100,2200,2300)
+
+complete.year.day <- 
+  data_frame(date = seq.Date(from = start.date,to = end.date, by = 'day')) %>% 
+  mutate(year = year(date), day.of.year = yday(date)) 
+
+ complete.year.day.hour<-  merge(complete.year.day,chour,all=TRUE)
+ data.frame(complete.year.day.hour)
+names (complete.year.day.hour) = c("date", "year", "day","hour")
+
+
+glimpse(complete.year.day.hour)
+
+```
+
+# Check the missing data and replace missing value
+
+```{r, fig.width=15, fig.height=25,echo=FALSE}
+
+complete.hourly <- 
+  right_join(climate.data, complete.year.day.hour, by = c('year','day', 'hour')) %>% 
+   mutate_at('mean.solar.rad.w.m2',funs(replace(., .< 0, 0))) %>% 
+   mutate_at('mean.rh',funs(replace(., .< 0, 0))) %>% 
+   mutate_if(is.numeric,funs(replace(.,is.nan(.),NA))) %>% 
+   group_by(day,hour) %>%
+   mutate_at('mean.solar.rad.w.m2',funs(replace(.,is.na(.),mean(.,na.rm=TRUE))))%>%
+   mutate_at('mean.rh',funs(replace(.,is.na(.),mean(.,na.rm=TRUE))))%>%
+   mutate_at('mean.ta',funs(replace(.,is.na(.),mean(.,na.rm=TRUE))))%>%
+   mutate_at('mean.wind.speed.m.s',funs(replace(.,is.na(.),mean(.,na.rm=TRUE))))%>%
+   ungroup(.) %>% 
+   mutate(mean.rh = if_else(mean.rh > 100, 100, mean.rh)) %>% 
+  drop_na(year)
+    
+#write.csv(complete.hourly, file.path(IntermediateResults, paste(output.name, '.csv',sep = '')))
+
+#short_summary(complete.hourly)  
+
+```
+
+# organize the data for input into GroIMP
+
+```{r, fig.width=15, fig.height=25,echo=FALSE}
+FPAR = 0.55
+WATT_TO_PPFD = 4.55
+    
+date = as.Date("2019-2-04")
+yday(date)
+leap_year(2019)
+  
+climate.data.hourly.new <- 
+  complete.hourly %>% 
+  mutate(hour = hour/100) %>% 
+ # mutate( hour= if_else(hour==24, 0, hour)) %>% 
+  arrange(year,day,hour) %>% 
+  mutate(total.radiation.umol.m2.s = as.numeric(mean.solar.rad.w.m2) * WATT_TO_PPFD) %>% 
+  mutate(CO2.ppm = 400, swp.MPa = -0.2, mean.rh = mean.rh/100,stn.no.=121 ) %>% 
+  select(day, hour, mean.ta, mean.rh,total.radiation.umol.m2.s,CO2.ppm, mean.wind.speed.m.s, swp.MPa, year, stn.no.) #%>%
+  #filter((year == 2019))
+    
+write_csv(climate.data.hourly.new, file.path(IntermediateResults, 
+                    paste('MRL.climate.data.hourly.csv',sep = '')))  
+#names(complete.hourly)
+  
+```
+
