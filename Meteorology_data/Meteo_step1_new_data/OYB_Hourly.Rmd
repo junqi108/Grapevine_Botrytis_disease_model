@@ -24,14 +24,26 @@ output:
     IntermediateResults = file.path(MainDir, 'Intermediate results')  
     SupportingFunctions = file.path(MainDir, 'Supporting functions')
     # CustomizedFunctions = file.path('E:/Programming_lang/R_language/Function_library/')
-    CustomizedFunctions = file.path('/mnt/sda/Programming_lang/R_language/Function_library/')
-   # CustomizedFunctions = file.path('d:/Programming language/R language/Customized function library/')
-   # CustomizedFunctions = file.path('/powerplant/workspace/hrmjxz/Programming_lang/R_language/Function_library/')
+     if(grepl('powerplant', MainDir) == T)
+    {
+    LibFunctions = file.path('/powerplant/workspace/hrmjxz/Programming_lang/R_language/Function_library/')
+    } else if(grepl('/mnt/sda', MainDir) == T)
+     {
+    LibFunctions = file.path("/mnt/sda/Programming_lang/R_language/Function_library/")
+    } else if(grepl('HRMLXY', MainDir) == T)
+    {
+      LibFunctions = file.path('//MAR-FILE//HOME$//HRMLXY/My 
+                  Documents/GitHub/grapevine_yield_components/Customized function library')
+    } else
+    { LibFunctions = file.path("W:/Programming_lang/R_language/Function_library/") }
     
+  
+    # LibFunctions = file.path('E:/Programming_lang/R_language/Function_library/')
+    # LibFunctions = file.path('/powerplant/workspace/hrmjxz/Programming_lang/R_language/Function_library/')
     IntermediateResults = file.path(MainDir, 'Intermediate results')  
     SupportingFunctions = file.path(MainDir, 'Supporting functions')
     # Load all functions
-    source(file.path(CustomizedFunctions,'Customized_functions_for_climate.R'))   
+    source(file.path(LibFunctions,'Customized_functions_for_climate.R'))
     # lsf.str()  #list of functions
     } 
 ```
@@ -42,7 +54,8 @@ current.region <- 'Site1002_OYB'
 current.subject <- ''
 # current.year <- '18_19'
 site = "OYB"
-lastYear = '2021'
+# keep year as numeric variable
+lastYear = 2020
 output.name <- paste(current.region, current.subject, sep = '')
 output.name
 
@@ -66,7 +79,8 @@ hourly.data <-
   mutate_all(., funs(as.numeric(as.character(.)))) %>% 
   distinct(year,day,hour, .keep_all = T) %>% 
   # filter(year>= 2020) %>% 
-  select(-solar.rad)
+  select(-solar.rad) %>% 
+  filter(year>= lastYear) 
 
 glimpse(hourly.data)
 # last(hourly.data$year)
@@ -227,7 +241,8 @@ climate.data.hourly.new <-
   rename(doy = day) 
   # filter(year>=lastYear)
 
-
+head(climate.data.daily.cal)
+tail(climate.data.daily.cal)
 glimpse(climate.data.daily.cal)
 
 write_csv(climate.data.daily.cal, 
@@ -243,7 +258,15 @@ write_csv(climate.data.daily.cal,
   read_csv(file.path(IntermediateResults, 'MetData_latest.csv'),guess_max = 1000) %>%
   filter(!(station == site & year>=lastYear))
 
- daily.data %>%
+ daily.data %>% 
+  filter((station == site)) %>% 
+  tail()
+
+daily.data %>% 
+  filter((station == site & year == (lastYear-1))) %>% 
+  tail()
+
+daily.data %>%
    filter(station ==site & year == lastYear)
 
 # glimpse(daily.data)
@@ -258,6 +281,13 @@ write_csv(climate.data.daily.cal,
 full.data <-
     bind_rows(daily.data, climate.data.daily.cal)
 
+full.data %>%
+  filter(station ==site & year >=lastYear) %>% 
+  head()
+
+full.data %>%
+   filter(station ==site & year >=lastYear) %>% 
+  tail()
 # short_summary(full.data)
 
  write_csv(full.data, file.path(IntermediateResults, 'MetData_latest.csv'))

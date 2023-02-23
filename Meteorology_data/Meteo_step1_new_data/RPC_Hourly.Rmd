@@ -23,13 +23,27 @@ output:
     # Output directory, final results except figures, like statistics, and intermediate data set
     IntermediateResults = file.path(MainDir, 'Intermediate results')  
     SupportingFunctions = file.path(MainDir, 'Supporting functions')
-    CustomizedFunctions = file.path('/mnt/sda/Programming_lang/R_language/Function_library/')
-    # CustomizedFunctions = file.path('E:/Programming_lang/R_language/Function_library/')
-    # CustomizedFunctions = file.path('/powerplant/workspace/hrmjxz/Programming_lang/R_language/Function_library/')
+           
+  if(grepl('powerplant', MainDir) == T)
+    {
+    LibFunctions = file.path('/powerplant/workspace/hrmjxz/Programming_lang/R_language/Function_library/')
+    } else if(grepl('/mnt/sda', MainDir) == T)
+     {
+    LibFunctions = file.path("/mnt/sda/Programming_lang/R_language/Function_library/")
+    } else if(grepl('HRMLXY', MainDir) == T)
+    {
+      LibFunctions = file.path('//MAR-FILE//HOME$//HRMLXY/My 
+                  Documents/GitHub/grapevine_yield_components/Customized function library')
+    } else
+    { LibFunctions = file.path("W:/Programming_lang/R_language/Function_library/") }
+    
+    
+    # LibFunctions = file.path('E:/Programming_lang/R_language/Function_library/')
+    # LibFunctions = file.path('/powerplant/workspace/hrmjxz/Programming_lang/R_language/Function_library/')
     IntermediateResults = file.path(MainDir, 'Intermediate results')  
     SupportingFunctions = file.path(MainDir, 'Supporting functions')
     # Load all functions
-    source(file.path(CustomizedFunctions,'Customized_functions_for_climate.R'))
+    source(file.path(LibFunctions,'Customized_functions_for_climate.R'))
     # lsf.str()  #list of functions
     } 
 ```
@@ -40,7 +54,8 @@ current.region <- 'Site1004_RPC'
 current.subject <- ''
 # current.year <- '18_19'
 site = "Squire"
-lastYear = '2021'
+# keep year as numeric variable
+lastYear = 2021
 output.name <- paste(current.region, current.subject, sep = '')
 output.name
 
@@ -72,7 +87,8 @@ hourly.data <-
    # mutate(date = convertToDate(timestamp, origin = "1900-01-01")) %>% 
    # mutate(hour = round(timestamp%%1 *24)) %>% 
     distinct(year,day,hour, .keep_all = T) %>% 
-    filter(!(year == 1997 & day == 296))
+    filter(!(year == 1997 & day == 296)) %>% 
+    filter(year>= lastYear) 
   # filter(year>= 2020) %>% 
   # filter(!(year==2020 & day<=9))
 
@@ -229,7 +245,8 @@ complete.radiation <-
   rename(doy = day) %>% 
   filter(year>=lastYear)
 
-
+head(climate.data.daily.cal)
+tail(climate.data.daily.cal)
 # glimpse(climate.data.daily.cal)
 # short_summary(climate.data.daily.cal)
 
@@ -247,6 +264,14 @@ write_csv(climate.data.daily.cal,
   arrange(station, year, doy) %>% 
   filter(!(station == site & year>=lastYear))
 
+daily.data %>% 
+  filter((station == site)) %>% 
+  tail()
+
+daily.data %>% 
+  filter((station == site & year == (lastYear-1))) %>% 
+  tail()
+
 # In R, the & operator represents element-wise logical AND, while the && operator represents short-circuit logical AND.
 # need element-wise comparison here, as we need to know each element
 daily.data %>%
@@ -263,7 +288,13 @@ full.data <-
     bind_rows(daily.data, climate.data.daily.cal) 
  
 full.data %>%
-  filter((station == site & year>=lastYear))
+  filter((station == site & year>=lastYear)) %>% 
+  tail()
+
+full.data %>%
+  filter((station == site & year>=lastYear)) %>% 
+  head()
+
 # short_summary(daily.data)
 # short_summary(full.data)
  
