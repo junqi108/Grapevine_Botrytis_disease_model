@@ -307,6 +307,9 @@ write_csv(full.data, file.path(IntermediateResults, 'MetData_latest.csv'))
 #APSIM output
 ```{r, fig.width=15, fig.height=25,echo=FALSE}
 
+full.data <-  read_csv(file.path(IntermediateResults, 'MetData_latest.csv'))
+
+
 apsim <- 
   full.data %>% 
   filter(station==site) %>% 

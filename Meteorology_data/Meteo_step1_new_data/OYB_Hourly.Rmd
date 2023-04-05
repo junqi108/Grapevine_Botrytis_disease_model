@@ -298,9 +298,11 @@ full.data %>%
 
 #APSIM output
 ```{r, fig.width=15, fig.height=25,echo=FALSE}
+full.data <-  read_csv(file.path(IntermediateResults, 'MetData_latest.csv'))
+
 
 apsim <- 
-  climate.data.daily.cal %>% 
+  full.data %>% 
   filter(station=="OYB") %>% 
   select(year,doy,totalRain,Tmax, Tmin, Rad,Wind,RH,vpd) %>% 
   mutate(totalRain= round(totalRain, 2),

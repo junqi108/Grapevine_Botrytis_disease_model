@@ -99,8 +99,8 @@ glimpse(hourly.data)
 ## create a complete records of days and hours
 
 ```{r, warning=FALSE, echo=FALSE, error=FALSE, message=FALSE}
-
-first.day <- first(hourly.data$day)
+# for having a complete data of seaview 
+first.day <- 1 #first(hourly.data$day)
 first.year <- first(hourly.data$year)
 
 last.day <- last(hourly.data$day)
@@ -127,10 +127,10 @@ glimpse(complete.year.day.hour)
 ```
  # Check the missing data and replace missing value
 ```{r, fig.width=15, fig.height=25,echo=FALSE}
- glimpse(hourly.data)
+ # glimpse(hourly.data)
 
 hourly.data.new <- 
-  right_join(hourly.data, complete.year.day.hour, by = c('year','day', 'hour')) %>% 
+  full_join(complete.year.day.hour, hourly.data, by = c('year','day', 'hour')) %>% 
   
   mutate_at('relativehumi_avg',funs(replace(., .< 0, 0))) %>% 
   mutate_at('relativehumi_avg',funs(replace(., .> 100, 100))) %>%   
@@ -268,6 +268,7 @@ write_csv(climate.data.daily.cal,
   arrange(station, year, doy) %>% 
   filter(!(station == site & year >=lastYear))
 
+unique(daily.data$station)
 daily.data %>% 
   filter((station == site)) %>% 
   tail()
@@ -316,6 +317,9 @@ full.data %>%
 
 #APSIM output
 ```{r, fig.width=15, fig.height=25,echo=FALSE}
+full.data <-  read_csv(file.path(IntermediateResults, 'MetData_latest.csv'))
+
+
 blenheim.2004 <- 
   full.data %>% 
   filter(station == 'Blenheim' & (year == 2004|year == 2003))

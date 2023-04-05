@@ -272,6 +272,8 @@ full.data %>%
 #APSIM output
 ```{r, fig.width=15, fig.height=25,echo=FALSE}
 
+full.data <-  read_csv(file.path(IntermediateResults, 'MetData_latest.csv'))
+
 apsim <- 
   full.data %>% 
   filter(station=="Booker") %>% 
@@ -279,10 +281,11 @@ apsim <-
   mutate(RH = round(RH, 2), vpd = round(vpd,2))
 
 glimpse(apsim)
+max(apsim$year)
 # short_summary(apsim)
 
 
-fileName <- "Site1001_OYB.met"
+fileName <- "Site1001_BRA.met"
 
 f <- file(paste0(IntermediateResults,"/", fileName), "w")
     
