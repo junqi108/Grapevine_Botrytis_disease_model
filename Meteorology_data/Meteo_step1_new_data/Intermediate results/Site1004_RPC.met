@@ -1,4 +1,11 @@
-"year" "doy" "totalRain" "Tmax" "Tmin" "Rad" "Wind" "RH" "vpd"
+[weather.met.weather] 
+ Site = Squire 
+ Latitude = -41.49137 
+ Longitude = 173.8891 
+ tav=12.92  !annual  average  ambient  temperature 
+ amp=14.81  !annual  amplitud  in  mean  monthly  temperature 
+ year  day  rain  maxt  mint  radn  wind rh vpd 
+ ()  ()  (mm)  (oC)  (oC)  (MJ/m2/d)  (m/s) (%) (kpa) 
 2000 1 2.25509090909091 23.59 13.59 15.2069388781949 3.41518183503788 19.67 1.65
 2000 2 10.617 21.52 14.95 15.2069388781949 4.63341666666667 17.53 1.72
 2000 3 14.906 14.56 10.87 15.2069388781949 6.065875 13.2 1.32

@@ -57,7 +57,7 @@ current.subject <- ''
 # current.year <- '18_19'
 site = "Seaview"
 # keep year as numeric variable
-lastYear = 2020
+lastYear = 2005
 output.name <- paste(current.region, current.subject, sep = '')
 output.name
 
@@ -100,7 +100,7 @@ glimpse(hourly.data)
 
 ```{r, warning=FALSE, echo=FALSE, error=FALSE, message=FALSE}
 # for having a complete data of seaview 
-first.day <- 1 #first(hourly.data$day)
+first.day <- first(hourly.data$day)
 first.year <- first(hourly.data$year)
 
 last.day <- last(hourly.data$day)

@@ -283,30 +283,20 @@ apsim <-
 glimpse(apsim)
 max(apsim$year)
 # short_summary(apsim)
-
-
 fileName <- "Site1001_BRA.met"
-
-f <- file(paste0(IntermediateResults,"/", fileName), "w")
-    
-    cat(
-      "[weather.met.weather] \r\n Site = Booker", "\r\n",
-      "Latitude = -41.54248",    "\r\n",
-      "Longitude = 173.84736", "\r\n",
-      "tav=12.92  !annual  average  ambient  temperature", "\r\n",
-      "amp=14.81  !annual  amplitud  in  mean  monthly  temperature", "\r\n",    
-      "year  day  rain  maxt  mint  radn  wind rh vpd", "\r\n",
-      "()  ()  (mm)  (oC)  (oC)  (MJ/m2/d)  (m/s) (%) (kpa)", "\r\n",
-      
-      file= f, append = T)
-    
-    write.table(apsim, file = f, append = TRUE, quote = FALSE,
-                sep = " ", eol = "\r\n", col.names = F, row.names=F)
-    # 
-    close(f)
-
-
-write.table(apsim, file.path(IntermediateResults, paste(output.name, "met", sep = '.')), row.names = F, sep = ' ')
+file.path <- paste0(IntermediateResults, "/", fileName)
+f <- file(file.path, "w")
+cat("[weather.met.weather] \r\n Site = Booker", "\r\n",
+    "Latitude = -41.54248", "\r\n",
+    "Longitude = 173.84736", "\r\n",
+    "tav=12.92  !annual  average  ambient  temperature", "\r\n",
+    "amp=14.81  !annual  amplitud  in  mean  monthly  temperature", "\r\n",
+    "year  day  rain  maxt  mint  radn  wind rh vpd", "\r\n",
+    "()  ()  (mm)  (oC)  (oC)  (MJ/m2/d)  (m/s) (%) (kpa)", "\r\n",
+    file = f, append = FALSE)
+write.table(apsim, file = f, append = TRUE, quote = FALSE,
+            sep = " ", eol = "\r\n", col.names = FALSE, row.names = FALSE)
+close(f)
 
 # write_tsv(full.data, file.path(IntermediateResults, paste(output.name, "met", sep = '.')))
 
