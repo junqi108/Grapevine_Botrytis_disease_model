@@ -1,0 +1,231 @@
+---
+title: "Checking and tiding up the climate data"
+author: "Junqi ZHU"
+output:
+  html_document: default
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r, warning=FALSE, echo=FALSE, tidy=TRUE, error=FALSE, message=FALSE}
+ rm(list = ls())
+    {
+    library(plyr)
+    l_ply(list('tidyverse','readxl','tidyr','dplyr','ggplot2','broom','ggthemes','plotly','purrr',
+               'reshape2','cowplot','grid', 'reshape2','lubridate', 'RColorBrewer', 'datacheck'), 
+          require, character.only = T)
+    # tidyverse_update(recursive = FALSE) #updating packages
+    #get the current working directory
+    MainDir <- list(PROJHOME = normalizePath(getwd()))
+    # Input and output directory data file location
+    ExpData = file.path(MainDir, 'ExpData')
+    # figure output directory, mainly the the place for paper writing 
+    FigureOutput = file.path(MainDir, 'Figures')
+    
+    # Output directory, final results except figures, like statistics, and intermediate data set
+    IntermediateResults = file.path(MainDir, 'Intermediate results')  
+    SupportingFunctions = file.path(MainDir, 'Supporting functions')
+    # CustomizedFunctions = file.path('H:/Programming language/R language/Customized function library/')
+    CustomizedFunctions = file.path(MainDir, 'customizedFunctionsLib')
+    # Load all functions
+    source(file.path(CustomizedFunctions,'Customized_curve_fitting_functions.R'))
+    source(file.path(CustomizedFunctions,'Customized_functions_data_reconstruction.R'))
+    source(file.path(CustomizedFunctions,'Customized_functions_for_photosynthesis.R'))
+    
+    source(file.path(SupportingFunctions,'Layout_of_ggplot.R'))
+    source(file.path(SupportingFunctions,'Specific_functions.R'))
+    # lsf.str()  #list of functions
+    } 
+```
+
+# A remind of the subject that you are working on
+```{r}
+current.region <- 'Site1001_BRA'
+current.subject <- 'Daily_New'
+
+output.name <- paste(current.region, current.subject, sep = '_')
+print(output.name)
+
+```
+
+## Load the data
+```{r, warning=FALSE, echo=FALSE, error=FALSE, message=FALSE}
+library(openxlsx)
+
+daily.data.24am.int <- 
+  read_csv(file.path(ExpData, 'BRA New daily.csv'), col_names = F)
+
+ daily.data.24am <- 
+  daily.data.24am.int %>% 
+  slice(-c(1:5)) %>% 
+  select(1:18) %>%
+  setNames(gsub(" ",".",tolower(.[1,]))) %>%
+  slice(-1) %>%
+  mutate(time.max.air.temp = dmy_hm(time.max.air.temp), 
+         time.min.air.temp = dmy_hm(time.min.air.temp), 
+         tim.max.wind.speed = dmy_hm(tim.max.wind.speed)) %>% 
+  # filter(year >=2018) %>% 
+  mutate(date = date(dmy_hm(timestamp))) %>% 
+  mutate_if(is.character, funs( as.numeric(as.character(.)))) %>% 
+  mutate_if(is.numeric,funs(replace(.,is.na(.), mean(.,na.rm=TRUE)))) %>% 
+  mutate(day = yday(date), hour = "24:00") %>% 
+  select(stn.no. = siteid, year, day, date, 
+         max.temp = max.air.temp,
+         min.temp = min.air.temp,
+         total.rain = rain_tot, 
+         wind.m.s = mean.wind.speed) %>% 
+  filter(year>= 2019) %>% 
+  filter(!(year==2019 & day<=143))
+
+   #if it becomes a number
+  #mutate(date = convertToDate(timestamp, origin =  "1900-01-01")) 
+  
+glimpse(daily.data.24am)
+
+short_summary(daily.data.24am)
+
+```
+
+
+## create a complete records of days
+```{r, warning=FALSE, echo=FALSE, error=FALSE, message=FALSE}
+first.day <- first(daily.data.24am$day)
+first.year <- first(daily.data.24am$year)
+last.day <- last(daily.data.24am$day)
+last.year <- last(daily.data.24am$year)
+
+start.date <- as.Date(first.day, origin = paste(first.year-1, 12, 31, sep = '-'))
+end.date <- as.Date(last.day, origin = paste(last.year-1, 12, 31, sep = '-'))
+
+yday(end.date)
+
+complete.year.day <- 
+  data_frame(date = seq.Date(from = start.date,to = end.date, by = 'day')) %>% 
+  mutate(year = year(date), day.of.year = yday(date))
+
+glimpse(complete.year.day)
+  
+  
+```
+# Check the missing data and replace missing value
+```{r, fig.width=15, fig.height=25,echo=FALSE}
+# complete.daily.date <- 
+right_join(daily.data.24am, complete.year.day, by = c('year','day' ='day.of.year')) %>% 
+    # filter(is.na(min.temp))
+filter(min.temp <= -15)
+# filter(max.temp >= 40)
+
+right_join(daily.data.24am, complete.year.day, by = c('year','day' ='day.of.year')) %>% 
+  short_summary(.)
+  
+complete.daily.24am <- 
+  right_join(daily.data.24am, complete.year.day, by = c('year','day' ='day.of.year', 'date')) %>% 
+  group_by(day) %>% 
+  mutate(min.temp = if_else(min.temp <= -15, as.double(NA), min.temp)) %>%
+  ungroup() %>% 
+  mutate_at('stn.no.',funs(replace(.,is.na(.),mean(.,na.rm=TRUE)))) %>%
+  # mutate_if(is.numeric,funs(replace(.,is.nan(.),
+  #                                   mean(.,na.rm=TRUE)))) %>% 
+  mutate_at('total.rain',funs(replace(.,is.na(.),0))) %>% 
+  mutate_at(vars(max.temp:wind.m.s),funs(replace(.,is.na(.),mean(.,na.rm=TRUE))))%>%
+  ungroup(.) %>% 
+  distinct(date, .keep_all = TRUE)
+
+  # glimpse(complete.daily.24am)
+short_summary(complete.daily.24am)
+
+
+
+  
+```
+
+## combine with hourl calculated data
+###relative humidity and sometimes radiation or wind speed is missing from the daily data
+```{r, echo=FALSE, error=FALSE, message=FALSE, warning=FALSE}
+# relative humidity data are mainly missing from the data
+daily.hourl.cal <- 
+  tbl_df(read_csv(file.path(IntermediateResults,                                    'Site1001_BRA_Hourly_New.daily.cal.csv'))) %>% 
+  select(-wind.m.s)
+  
+
+glimpse(daily.hourl.cal)
+
+complete.daily.data <- 
+  full_join(complete.daily.24am, daily.hourl.cal, by = c('year','day')) %>% 
+  mutate_if(is.numeric,funs(replace(.,is.na(.), mean(.,na.rm=TRUE)))) %>% 
+  mutate(vpd = VPD((max.temp +min.temp)/2, mean.rh/100)) %>% 
+  select(stn.no.,year,day, max.temp, min.temp, total.rain, 
+         wind.m.s, mean.rh, vpd)  
+    
+  
+    
+short_summary(complete.daily.data)  
+
+```
+
+
+# combine with blenheim radiation data
+## add the missing radiation data from the blenheim data
+```{r,echo=FALSE, error=FALSE, message=FALSE, warning=FALSE}
+# relative humidity data are mainly missing from the data
+blenheim.radiation <- 
+  tbl_df(read.csv(file.path(IntermediateResults, 
+                            'MRL_Daily_New.csv'), header = TRUE)) %>% 
+  select(year, day, daily.solar.rad.mj.m2)
+  
+
+glimpse(blenheim.radiation)
+
+complete.daily.data.radiation <-
+  full_join(complete.daily.data, blenheim.radiation, by = c('year','day')) %>% 
+  group_by(day) %>% 
+  mutate_at('daily.solar.rad.mj.m2',funs(replace(.,is.na(.), mean(.,na.rm=TRUE)))) %>% 
+  filter(!is.na(max.temp))
+
+
+short_summary(complete.daily.data.radiation)  
+
+```
+
+# export the data
+```{r, echo=FALSE, error=FALSE, message=FALSE, warning=FALSE}
+# relative humidity data are mainly missing from the data
+
+output.data <- 
+  complete.daily.data.radiation %>% 
+  select(stn.no.,year, year, day, total.rain, 
+         max.temp, min.temp, daily.solar.rad.mj.m2,
+         wind.m.s, mean.rh, vpd) %>% 
+  filter(!is.na(max.temp)) %>% 
+  mutate(year = format(year, scientific = FALSE)) %>% 
+  mutate_at(vars(total.rain:vpd), round, 2) %>% 
+  ungroup() %>% 
+  mutate(year = as.integer(year), day=as.integer(day)) %>% 
+  mutate(station = "BRA_Brancott") %>% 
+  select( "stn.no.","station", "year","day","total.rain",
+          "max.temp","min.temp", "daily.solar.rad.mj.m2", 
+          "wind.m.s","mean.rh", "vpd")
+  
+  
+short_summary(output.data)
+
+write_csv(output.data, file.path(IntermediateResults, 
+                                 paste(output.name, "csv", sep = '.')))
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

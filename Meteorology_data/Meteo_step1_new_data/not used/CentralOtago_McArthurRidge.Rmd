@@ -1,0 +1,170 @@
+---
+title: "Checking and tiding up the climate data"
+author: "Junqi ZHU, Remi FRAYSSE"
+output:
+  html_document: default
+---
+
+```{r, warning=FALSE, echo=FALSE, tidy=TRUE, error=FALSE, message=FALSE}
+ rm(list = ls())
+    {
+    library(plyr)
+    l_ply(list('tidyverse','readxl','tidyr','dplyr','ggplot2','broom','ggthemes','plotly','purrr',
+               'reshape2','cowplot','grid', 'reshape2','lubridate', 'RColorBrewer', 'datacheck'), 
+          require, character.only = T)
+    # tidyverse_update(recursive = FALSE) #updating packages
+    #get the current working directory
+    MainDir <- list(PROJHOME = normalizePath(getwd()))
+    # Input and output directory data file location
+    ExpData = file.path(MainDir, 'ExpData')
+    # figure output directory, mainly the the place for paper writing 
+    FigureOutput = file.path(MainDir, 'Figures')
+    
+    # Output directory, final results except figures, like statistics, and intermediate data set
+    IntermediateResults = file.path(MainDir, 'Intermediate results')  
+    SupportingFunctions = file.path(MainDir, 'Supporting functions')
+    # CustomizedFunctions = file.path('d:/Programming language/R language/Customized function library/')
+    CustomizedFunctions = file.path(MainDir, 'customizedFunctionsLib')
+    # Load all functions
+    source(file.path(CustomizedFunctions,'Customized_curve_fitting_functions.R'))
+    source(file.path(CustomizedFunctions,'Customized_functions_data_reconstruction.R'))
+    source(file.path(CustomizedFunctions,'Customized_functions_for_photosynthesis.R'))
+    # 
+    source(file.path(SupportingFunctions,'Layout_of_ggplot.R'))
+    source(file.path(SupportingFunctions,'Specific_functions.R'))
+    # lsf.str()  #list of functions
+    } 
+```
+
+# A remind of the subject that you are working on
+```{r}
+current.region <- 'CentralOtago'
+current.station <- 'McArthurRidge'
+current.subject <- 'Daily_MetData'
+
+output.name <- paste(current.region, current.station, current.subject, sep = '_')
+print(output.name)
+
+```
+
+## Load the data
+```{r, warning=FALSE, echo=FALSE, error=FALSE, message=FALSE}
+
+daily.data.24am <- 
+  tbl_df(read_xlsx(file.path(ExpData, "Central Otago Vineyard Stations.xlsx"), 
+                   sheet = 'McArthurRidge Alexandra', col_names = F)) %>% 
+  slice(-c(1:6)) %>% 
+  select(c(1:8))
+  # select(year, day, date, max.temp, min.temp, total.rain, mean.wind.speed)
+columns <- c(t(daily.data.24am[1,])) %>% tbl_df()
+columns <- columns %>% 
+  mutate(final.name = case_when(
+    grepl('Date', value) ~ "date",
+    grepl('Max', value) ~ "max.temp",
+    grepl('Min', value) ~ "min.temp",
+    grepl('Rain', value) ~ "total.rain",
+    is.na(value) ~ 'garbage',
+    TRUE ~ value))
+
+colnames(daily.data.24am) <- columns$final.name
+
+if (!("total.rain" %in% colnames(daily.data.24am))){
+  daily.data.24am <- mutate(daily.data.24am, total.rain = NA)
+}
+
+
+daily.data.24am <- 
+  select(daily.data.24am, date, min.temp, max.temp, total.rain) %>% 
+  slice(-1) %>% 
+  mutate_if(is.character, funs(as.numeric(as.character(.)))) %>% 
+  mutate(date = as.Date(date, origin="1899-12-30")) %>% 
+  mutate(year = year(date), day = yday(date)) %>% 
+  filter(!is.na(year))%>% 
+  left_join(select(read_csv(file.path(ExpData, "Central_otago.csv")),"year","day", "radn"), by = c('year','day'))
+  
+
+glimpse(daily.data.24am)
+
+```
+
+## create a complete records of days
+```{r, warning=FALSE, echo=FALSE, error=FALSE, message=FALSE}
+  first.day <- first(daily.data.24am$day)
+  first.year <- first(daily.data.24am$year)
+  last.day <- last(daily.data.24am$day)
+  last.year <- last(daily.data.24am$year)
+  
+  start.date <- as.Date(first.day, origin = paste(first.year-1, 12, 31, sep = '-'))
+  end.date <- as.Date(last.day, origin = paste(last.year-1, 12, 31, sep = '-'))
+  start.date
+  end.date
+  # yday(end.date)
+  
+  complete.year.day <- 
+    data_frame(date = seq.Date(from = start.date,to = end.date, by = 'day')) %>% 
+    mutate(year = year(date), day.of.year = yday(date))
+  
+  glimpse(complete.year.day)
+  glimpse(daily.data.24am)
+  
+```
+
+#Check the missing data and replace missing value
+```{r, fig.width=15, fig.height=25,echo=FALSE}
+
+complete.daily.data.radiation <-
+  read_csv(file.path(ExpData, "Central_otago.csv")) %>% 
+  select("year","day","rain","maxt","mint") %>% 
+  right_join(complete.year.day, by = c('year','day' ='day.of.year')) %>% 
+  left_join(daily.data.24am, by = c('year','day', 'date')) %>% 
+  mutate(max.temp = case_when(is.na(max.temp) ~ maxt,
+                              TRUE ~ max.temp)) %>% 
+  mutate(min.temp = case_when(is.na(min.temp) ~ mint,
+                              TRUE ~ min.temp)) %>%
+  select(date, year, day, min.temp, max.temp, total.rain, radn)
+
+filter(complete.daily.data.radiation, is.na(max.temp))
+
+```
+
+
+# export the data
+```{r, fig.width=15, fig.height=25,echo=FALSE}
+# relative humidity data are mainly missing from the data
+
+
+output.data <- 
+  complete.daily.data.radiation %>% 
+  filter(!is.na(max.temp)) %>% 
+  mutate(year = format(year, scientific = FALSE)) %>% 
+  ungroup() %>% 
+  mutate(year = as.integer(year), day=as.integer(day)) %>%
+  mutate(station = "McArthurRidge")
+
+short_summary(output.data)
+
+write_csv(output.data, file.path(IntermediateResults, paste(output.name, ".csv", sep = '')))
+
+write_tsv(output.data, file.path(IntermediateResults, paste(output.name, ".met", sep = '')))
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

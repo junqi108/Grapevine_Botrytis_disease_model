@@ -1,0 +1,245 @@
+---
+title: "Checking and tiding up the climate data"
+author: "Junqi ZHU"
+output:
+  html_document: default
+---
+
+```{r, warning=FALSE, echo=FALSE, tidy=TRUE, error=FALSE, message=FALSE}
+ rm(list = ls())
+    {
+    library(plyr)
+    l_ply(list('tidyverse','readxl','tidyr','dplyr','ggplot2','broom','ggthemes','plotly','purrr',
+               'reshape2','cowplot','grid', 'reshape2','lubridate', 'RColorBrewer', 'datacheck'), 
+          require, character.only = T)
+    # tidyverse_update(recursive = FALSE) #updating packages
+    #get the current working directory
+    MainDir <- list(PROJHOME = normalizePath(getwd()))
+    # Input and output directory data file location
+    ExpData = file.path(MainDir, 'ExpData')
+    # figure output directory, mainly the the place for paper writing 
+    FigureOutput = file.path(MainDir, 'Figures')
+    
+    # Output directory, final results except figures, like statistics, and intermediate data set
+    IntermediateResults = file.path(MainDir, 'Intermediate results')  
+    SupportingFunctions = file.path(MainDir, 'Supporting functions')
+    # CustomizedFunctions = file.path('H:/Programming language/R language/Customized function library/')
+    CustomizedFunctions = file.path(MainDir, 'customizedFunctionsLib')
+    # Load all functions
+    source(file.path(CustomizedFunctions,'Customized_curve_fitting_functions.R'))
+    source(file.path(CustomizedFunctions,'Customized_functions_data_reconstruction.R'))
+    source(file.path(CustomizedFunctions,'Customized_functions_for_photosynthesis.R'))
+    
+    source(file.path(SupportingFunctions,'Layout_of_ggplot.R'))
+    source(file.path(SupportingFunctions,'Specific_functions.R'))
+    # lsf.str()  #list of functions
+    } 
+```
+
+# A remind of the subject that you are working on
+```{r}
+current.region <- 'Site1002_OYB'
+current.subject <- 'Daily_MetData'
+current.year <- '18_19'
+
+output.name <- paste(current.region, current.subject, current.year, sep = '_')
+print(output.name)
+
+```
+
+## Load the data
+```{r, warning=FALSE, echo=FALSE, error=FALSE, message=FALSE}
+
+climate_names <- c("id", "year", "day", "hour", "max.temp", "min.temp", "mean.rh", 
+                   "total.rain", "min.grass.temp", "min.soil.temp", "total.solar.energy", 
+                   "total.wind.run", "pet", "mean.temp", "gdd", "date")
+
+daily.data.9am <- tbl_df(read_csv(file.path(ExpData, 'Site1002_OYB_Daily09.csv'), col_names = F)) %>% 
+  slice(-c(1:11)) %>% 
+  select(1:16) %>%
+  setNames(climate_names) %>%
+  mutate(date = as.Date(date, format="%d/%m/%Y")) %>% 
+  mutate_if(is.character, funs(as.numeric(as.character(.)))) %>% 
+  filter(year >= 2018)
+
+glimpse(daily.data.9am)
+
+
+daily.Ta.24am <- tbl_df(read_csv(file.path(ExpData, 'Site1002_OYB_Daily24.csv'), col_names = F)) %>% 
+  slice(-c(1:2)) %>% 
+  select(2:6) %>% 
+  setNames(gsub(" ",".",tolower(.[1,]))) %>%
+  slice(-c(1:3)) %>% 
+  rename(min.temp.24 = min, max.temp.24 = max) %>% 
+  mutate_if(is.character, funs(as.numeric(as.character(.)))) %>% 
+  filter(year >= 2018)
+
+options(dplyr.width = NULL, dplyr.print_min = 20)
+glimpse(daily.Ta.24am)
+
+```
+
+## create a complete records of days
+```{r, warning=FALSE, echo=FALSE, error=FALSE, message=FALSE}
+  first.day <- first(daily.data.9am$day)
+  first.year <- first(daily.data.9am$year)
+  last.day <- last(daily.data.9am$day)
+  last.year <- last(daily.data.9am$year)
+  
+  start.date <- as.Date(first.day, origin = paste(first.year-1, 12, 31, sep = '-'))
+  end.date <- as.Date(last.day, origin = paste(last.year-1, 12, 31, sep = '-'))
+  start.date
+  end.date
+  yday(end.date)
+  
+  complete.year.day <- 
+    data_frame(date = seq.Date(from = start.date,to = end.date, by = 'day')) %>% 
+    mutate(year = year(date), day.of.year = yday(date))
+  
+  glimpse(complete.year.day)
+  
+```
+# Check the missing data and replace missing value
+```{r, fig.width=15, fig.height=25,echo=FALSE}
+
+ # Check whether there is missing records
+# complete.daily.date <- 
+right_join(daily.data.9am, complete.year.day, by = c('year','day' ='day.of.year')) %>% 
+  # filter(is.na(min.temp))
+  filter(min.temp <= -15)
+# filter(max.temp >= 40)
+
+right_join(daily.data.9am, complete.year.day, by = c('year','day' ='day.of.year')) %>% 
+  short_summary(.)
+  
+complete.daily.9am <- 
+  right_join(daily.data.9am, complete.year.day, by = c('year','day' ='day.of.year', 'date')) %>% 
+   group_by(day) %>% 
+   mutate(min.temp = if_else(min.temp <= -15, as.double(NA), min.temp)) %>% 
+   mutate(total.solar.energy = if_else(total.solar.energy<0, 0, total.solar.energy)) %>% 
+   mutate_if(is.numeric,funs(replace(.,is.nan(.),NA))) %>% 
+   mutate_at('total.solar.energy',funs(replace(.,is.na(.),mean(.,na.rm=TRUE))))%>%
+   mutate_at('total.wind.run',funs(replace(.,is.na(.),mean(.,na.rm=TRUE))))%>%
+   mutate_at('min.temp',funs(replace(.,is.na(.),mean(.,na.rm=TRUE))))%>%
+   mutate_at('total.rain',funs(replace(.,is.na(.),0))) %>%
+    ungroup(.) %>% 
+   distinct(date, .keep_all = TRUE)
+
+# glimpse(complete.daily.9am)
+short_summary(complete.daily.9am)
+# complete.daily.date <- 
+right_join(daily.Ta.24am, complete.year.day, by = c('year','day' ='day.of.year', 'date')) %>% 
+  # filter(is.na(mintemp))
+  # filter(mintemp <= -15)
+  filter(maxtemp >= 40)
+  
+complete.daily.Ta <- 
+  right_join(daily.Ta.24am, complete.year.day, by = c('year','day' ='day.of.year')) %>%
+    mutate(min.temp.24 = if_else(min.temp.24 <= -15, as.double(NA), min.temp.24)) %>% 
+    group_by(day) %>% 
+    mutate_if(is.numeric,funs(replace(.,is.na(.),mean(.,na.rm=TRUE))))%>%
+    mutate_if(is.numeric,funs(replace(.,is.nan(.),NA))) %>% 
+    distinct(date,  .keep_all = TRUE)
+  
+  # glimpse(complete.daily.Ta)
+short_summary(complete.daily.Ta)
+```
+
+# join the data
+```{r, fig.width=15, fig.height=25,echo=FALSE}
+# relative humidity data are mainly missing from the data
+last(complete.daily.9am$date)
+last(complete.daily.Ta$date)
+# last(daily.data$date) 
+
+daily.data <- 
+    full_join(complete.daily.9am, complete.daily.Ta, by = c('year','day', 'date')) %>% 
+      select(year, day, date, total.rain, max.temp.24, min.temp.24, total.solar.energy,
+             total.wind.run, mean.rh)
+ 
+ 
+daily.data %>% 
+  filter(is.na(min.temp.24))
+
+short_summary(daily.data)
+          
+```
+
+# combine with hourl calculated data
+```{r, fig.width=15, fig.height=25,echo=FALSE}
+# relative humidity data are mainly missing from the data
+daily.hourl.cal <- 
+  tbl_df(read_csv(file.path(IntermediateResults, 
+                                             'Site1002_OYB_Hourly_MetData_18_19.daily.cal.csv'))) %>% 
+  mutate(daily.solar.rad.mj.cal = daily.solar.rad.mj.m2) %>% 
+  select(year,day, meanrh, daily.solar.rad.mj.cal)
+  
+
+glimpse(daily.hourl.cal)
+
+complete.daily.data <- 
+    full_join(daily.data, daily.hourl.cal, by = c('year','day')) %>% 
+    group_by(day) %>% 
+    mutate_if(is.numeric,funs(replace(.,is.na(.), mean(.,na.rm=TRUE)))) %>% 
+    # mutate_at('windrun',funs(replace(.,is.nan(.), mean(.,na.rm=TRUE)))) %>% 
+    mutate(wind.m.s = total.wind.run *1000/3600/24)  %>%
+      mutate(vpd = VPD((max.temp.24 +min.temp.24)/2, mean.rh/100))
+  
+    
+short_summary(complete.daily.data)  
+ 
+glimpse(complete.daily.data)
+qplot( total.solar.energy, daily.solar.rad.mj.cal, data = complete.daily.data)
+tidy(lm(total.solar.energy~ daily.solar.rad.mj.cal-1, data = complete.daily.data))
+ 
+
+```
+
+
+# export the data
+```{r, fig.width=15, fig.height=25,echo=FALSE}
+# relative humidity data are mainly missing from the data
+
+
+output.data <- 
+  complete.daily.data %>% 
+  select(year, day, total.rain, max.temp.24, min.temp.24, daily.solar.rad.mj.cal,
+         wind.m.s, mean.rh, vpd) %>% 
+  filter(!is.na(max.temp.24)) %>% 
+  mutate(year = format(year, scientific = FALSE)) %>% 
+  mutate_at(vars(total.rain:vpd), round, 2) %>% 
+  ungroup() %>% 
+  mutate(year = as.integer(year), day=as.integer(day)) %>% 
+  mutate(stn.no. = 'NULL') %>% 
+  mutate(station = "OYB_OysterBay")%>%
+  rename(max.temp = max.temp.24, min.temp = min.temp.24, daily.solar.rad.mj.m2 = daily.solar.rad.mj.cal) %>%
+  select( "stn.no.","station", "year","day","total.rain","max.temp","min.temp", "daily.solar.rad.mj.m2", 
+          "wind.m.s","mean.rh", "vpd")
+  
+short_summary(output.data)
+
+write_csv(output.data, file.path(IntermediateResults, paste(output.name, "APSIM_input.csv", sep = '_')))
+
+write_tsv(output.data, file.path(IntermediateResults, paste(output.name, "APSIM_input.met", sep = '_')))
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

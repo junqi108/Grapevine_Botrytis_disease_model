@@ -1,0 +1,66 @@
+---
+title: "Checking and tiding up the climate data"
+author: "Junqi ZHU"
+output:
+  html_document: default
+---
+
+```{r, warning=FALSE, echo=FALSE, tidy=TRUE, error=FALSE, message=FALSE}
+ rm(list = ls())
+    {
+    library(plyr)
+    l_ply(list('tidyverse','readxl','tidyr','dplyr','ggplot2','broom','ggthemes','plotly','purrr',
+               'reshape2','cowplot','grid', 'reshape2','lubridate', 'RColorBrewer', 'datacheck'), 
+          require, character.only = T)
+    # tidyverse_update(recursive = FALSE) #updating packages
+    #get the current working directory
+    MainDir <- list(PROJHOME = normalizePath(getwd()))
+    # Input and output directory data file location
+    ExpData = file.path(MainDir, 'ExpData')
+    # figure output directory, mainly the the place for paper writing 
+    FigureOutput = file.path(MainDir, 'Figures')
+    
+    # Output directory, final results except figures, like statistics, and intermediate data set
+    IntermediateResults = file.path(MainDir, 'Intermediate results')  
+    SupportingFunctions = file.path(MainDir, 'Supporting functions')
+    CustomizedFunctions = file.path(MainDir, 'customizedFunctionsLib')
+    
+    # Load all functions
+    source(file.path(CustomizedFunctions,'Customized_curve_fitting_functions.R'))
+    source(file.path(CustomizedFunctions,'Customized_functions_data_reconstruction.R'))
+    source(file.path(CustomizedFunctions,'Customized_functions_for_photosynthesis.R'))
+    source(file.path(SupportingFunctions,'Layout_of_ggplot.R'))
+    source(file.path(SupportingFunctions,'Specific_functions.R'))
+    } 
+```
+
+# A remind of the subject that you are working on
+```{r}
+current.region <- 'Marlborough'
+current.subject <- 'Daily_MetData'
+
+output.name <- paste(current.region, current.subject, sep = '_')
+print(output.name)
+
+```
+
+```{r, warning=FALSE, echo=FALSE, tidy=TRUE, error=FALSE, message=FALSE}
+
+MRL <- read.csv(file.path(IntermediateResults, "Blenheim_Daily_MetData_APSIM_input.csv")) %>% 
+  select(year, day, soil.moisture.5.35cm) %>% 
+  drop_na()
+
+site1001.BRA <- read_csv(file.path(ExpData, "Site1001_BRA_Daily_MetData_2001_2019_APSIM_input.csv")) %>% 
+  left_join(MRL, by = c("year", "day"))
+site1002.OYB <- read_csv(file.path(ExpData, "Site1002_OYB_Daily_MetData_2000_2019_APSIM_input.csv")) %>% 
+  left_join(MRL, by = c("year", "day"))
+site1003.SEA <- read_csv(file.path(ExpData, "Site1003_SEA_Daily_MetData_2004_2019_APSIM_input.csv")) %>% 
+  left_join(MRL, by = c("year", "day"))
+site1004.RPC <- read_csv(file.path(ExpData, "Site1004_RPC_Daily_MetData_1997_2019_APSIM_input.csv")) %>% 
+  left_join(MRL, by = c("year", "day"))
+
+write_csv(site1001.BRA, file.path(IntermediateResults, "Site1001_BRA_Daily_MetData_2001_2019_APSIM_input.csv"))
+write_csv(site1002.OYB, file.path(IntermediateResults, "Site1002_OYB_Daily_MetData_2000_2019_APSIM_input.csv"))
+write_csv(site1003.SEA, file.path(IntermediateResults, "Site1003_SEA_Daily_MetData_2004_2019_APSIM_input.csv"))
+write_csv(site1004.RPC, file.path(IntermediateResults, "Site1004_RPC_Daily_MetData_1997_2019_APSIM_input.csv"))
+```

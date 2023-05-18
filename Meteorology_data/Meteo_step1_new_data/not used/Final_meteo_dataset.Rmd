@@ -1,0 +1,117 @@
+---
+title: "Checking and tiding up the climate data"
+author: "Junqi ZHU, Remi FRAYSSE"
+output:
+  html_document: default
+---
+
+```{r, warning=FALSE, echo=FALSE, tidy=TRUE, error=FALSE, message=FALSE}
+ rm(list = ls())
+    {
+    library(plyr)
+    l_ply(list('tidyverse','readxl','tidyr','dplyr','ggplot2','broom','ggthemes','plotly','purrr',
+               'reshape2','cowplot','grid', 'reshape2','lubridate', 'RColorBrewer', 'datacheck'), 
+          require, character.only = T)
+    # tidyverse_update(recursive = FALSE) #updating packages
+    #get the current working directory
+    MainDir <- list(PROJHOME = normalizePath(getwd()))
+    # Input and output directory data file location
+    ExpData = file.path(MainDir, 'ExpData')
+    # figure output directory, mainly the the place for paper writing 
+    FigureOutput = file.path(MainDir, 'Figures')
+    
+    # Output directory, final results except figures, like statistics, and intermediate data set
+    IntermediateResults = file.path(MainDir, 'Intermediate results')  
+    SupportingFunctions = file.path(MainDir, 'Supporting functions')
+    # CustomizedFunctions = file.path('d:/Programming language/R language/Customized function library/')
+    CustomizedFunctions = file.path(MainDir, 'customizedFunctionsLib')
+    # Load all functions
+    source(file.path(CustomizedFunctions,'Customized_curve_fitting_functions.R'))
+    source(file.path(CustomizedFunctions,'Customized_functions_data_reconstruction.R'))
+    source(file.path(CustomizedFunctions,'Customized_functions_for_photosynthesis.R'))
+    # 
+    source(file.path(SupportingFunctions,'Layout_of_ggplot.R'))
+    source(file.path(SupportingFunctions,'Specific_functions.R'))
+    # lsf.str()  #list of functions
+    } 
+```
+
+# A remind of the subject that you are working on
+```{r}
+current.region <- 'AllOthers'
+current.subject <- 'Daily_MetData'
+
+output.name <- paste(current.region, current.subject, sep = '_')
+print(output.name)
+
+```
+
+## Load the data
+```{r, warning=FALSE, echo=FALSE, error=FALSE, message=FALSE}
+
+read.meteo <- function(file.directory) {
+  file_list <- list.files(file.directory)
+  temp.a = 1
+  
+  for (file in file_list){
+    temp_dataset <-
+      read.csv(file.path(file.directory, file), header = TRUE)
+    
+    if(temp.a == 1) {
+      dataset  <-  temp_dataset;
+      temp.a  <-  2
+      }
+    else if(temp.a != 1) {
+      dataset <- union_all(dataset, temp_dataset)
+      }
+  }
+  dataset <- dataset %>% 
+    mutate(date = as_date(date))
+  
+  return(dataset)
+}
+
+met.data <- read.meteo(IntermediateResults)
+
+short_summary(met.data)
+glimpse(met.data)
+
+write_csv(met.data, file.path(MainDir, paste(output.name, ".csv", sep = "")))
+```
+
+#fast checking max temp
+```{r label, options}
+met.data %>% 
+  ggplot(aes(day, max.temp, colour=as.factor(year))) +
+  facet_wrap(~as.factor(station)) +
+  geom_point(size = 0.3) +
+  theme(legend.title= element_text(size=0))
+
+met.data %>% 
+  filter(year == 2016) %>% 
+  ggplot(aes(day, max.temp)) +
+  facet_wrap(~as.factor(station)) +
+  geom_point(size = 0.5) +
+  theme(legend.title= element_text(size=0))
+```
+
+#fast checking min temp
+```{r label, options}
+met.data %>% 
+  ggplot(aes(day, min.temp, colour=as.factor(year))) +
+  facet_wrap(~as.factor(station)) +
+  geom_point(size = 0.5) +
+  theme(legend.title= element_text(size=0))
+
+met.data %>% 
+  filter(year == 2016) %>% 
+  ggplot(aes(day, min.temp)) +
+  facet_wrap(~as.factor(station)) +
+  geom_point(size = 0.5) +
+  theme(legend.title= element_text(size=0))
+```
+
+#
+```{r label, options}
+
+```

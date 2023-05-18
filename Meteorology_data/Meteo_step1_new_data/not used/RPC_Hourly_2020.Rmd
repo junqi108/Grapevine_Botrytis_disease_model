@@ -1,0 +1,163 @@
+---
+title: "Checking and tiding up the climate data"
+author: "Junqi ZHU"
+output:
+  html_document: default
+---
+
+```{r, warning=FALSE, echo=FALSE, tidy=TRUE, error=FALSE, message=FALSE}
+ rm(list = ls())
+    {
+    library(plyr)
+    l_ply(list('tidyverse','readxl','tidyr','readr','dplyr','ggplot2','broom','ggthemes','plotly','purrr',
+               'reshape2','cowplot','grid', 'reshape2','lubridate', 'RColorBrewer', 'datacheck'), 
+          require, character.only = T)
+    # tidyverse_update(recursive = FALSE) #updating packages
+    #get the current working directory
+    MainDir <- list(PROJHOME = normalizePath(getwd()))
+    # Input and output directory data file location
+    ExpData = file.path(MainDir, 'ExpData')
+    # figure output directory, mainly the the place for paper writing 
+    FigureOutput = file.path(MainDir, 'Figures')
+    
+    # Output directory, final results except figures, like statistics, and intermediate data set
+    IntermediateResults = file.path(MainDir, 'Intermediate results')  
+    SupportingFunctions = file.path(MainDir, 'Supporting functions')
+    # CustomizedFunctions = file.path('d:/Programming language/R language/Customized function library/')
+    CustomizedFunctions = file.path(MainDir, 'customizedFunctionsLib')
+    
+    # Load all functions
+    source(file.path(CustomizedFunctions,'Customized_curve_fitting_functions.R'))
+    source(file.path(CustomizedFunctions,'Customized_functions_data_reconstruction.R'))
+    
+    source(file.path(SupportingFunctions,'Layout_of_ggplot.R'))
+    source(file.path(SupportingFunctions,'Specific_functions.R'))
+    # lsf.str()  #list of functions
+    } 
+```
+
+# A remind of the subject that you are working on
+```{r}
+current.region <- 'Site1004_RPC'
+current.subject <- 'Hourly_New'
+# current.year <- '18_19'
+
+output.name <- paste(current.region, current.subject, sep = '_')
+output.name
+
+```
+
+## Load the data
+```{r, warning=FALSE, echo=FALSE, error=FALSE, message=FALSE}
+options(dplyr.width = Inf, dplyr.print_min = 10)
+
+hourly.data.names <- c("TIMESTAMP",	"RECORD",	"SiteID",	"AirTemperatu_Avg",	"AirTemperatu_Min",	
+                        "AirTemperatu_Max", "RelativeHumi_Avg", "Rain_Tot",	"Wetness_Avg",
+                        "WindSpeed_Avg",	"WindSpeed_Max")
+
+library(openxlsx)
+
+hourly.data.int <- 
+  tbl_df(read_xlsx(file.path(ExpData, 'RPC New.xlsx'), 
+                   sheet = 'RPC_Hourly', col_names = F)) 
+hourly.data <-   
+hourly.data.int %>% 
+    slice(-c(1:4)) %>% 
+    select(1:11) %>% 
+    setNames(tolower(hourly.data.names)) %>% 
+    slice(-1) %>% 
+    mutate(date = convertToDate(timestamp, origin = "1900-01-01")) %>% 
+    mutate(hour = round(timestamp%%1 *24)) %>% 
+    mutate_if(is.character, funs( as.numeric(as.character(.)))) %>%
+    mutate(year=year(date), day = yday(date)) %>%    
+    distinct(year,day,hour, .keep_all = T)
+
+glimpse(hourly.data)
+# last(hourly.data$year)
+
+```
+
+# Check the missing data and replace missing value
+```{r, fig.width=15, fig.height=25,echo=FALSE}
+ 
+
+hourly.data.new <- 
+  hourly.data %>% 
+  mutate_at('relativehumi_avg',funs(replace(., .< 0, 0))) %>% 
+  mutate_at('relativehumi_avg',funs(replace(., .> 100, 100))) %>%   
+  mutate_at('windspeed_avg',funs(replace(., .< 0, 0))) %>% 
+  mutate_if(is.numeric,funs(replace(.,is.nan(.),NA))) %>% 
+  group_by(day,hour) %>%
+  mutate_at(vars(relativehumi_avg:windspeed_avg),funs(replace(.,is.na(.),mean(.,na.rm=TRUE))))%>%
+  ungroup(.) %>% 
+  distinct(year,day, hour, .keep_all = TRUE) %>% 
+  arrange(year,day,hour) %>% 
+  select(year,day,hour, relativehumi_avg, windspeed_avg) %>% 
+  filter(!is.na(year)) %>% 
+  filter(year>= 2019) %>% 
+  filter(!(year==2019 & day<=143))
+  
+   
+
+glimpse(hourly.data.new)
+
+short_summary(hourly.data.new)  
+
+  # View(hourly.data.hourly)
+```
+
+
+# doing some calculations
+```{r, fig.width=15, fig.height=25,echo=FALSE}
+ 
+FPAR = 0.55
+WATT_TO_PPFD = 4.55
+
+hourly.data.daily.cal <-
+  hourly.data.new %>% 
+  arrange(year,day,hour) %>% 
+  select(year,day,hour, relativehumi_avg, windspeed_avg) %>% 
+  
+  # mutate(mean.solar.rad.j = as.numeric(meansolarradw.m2) ) %>% 
+  group_by(year,day) %>% 
+  summarize_all(mean, na.rm = TRUE) %>% 
+  rename(mean.rh =relativehumi_avg, wind.m.s = windspeed_avg)
+  
+# glimpse(hourly.data.daily.cal)
+
+short_summary(hourly.data.daily.cal)  
+     
+write_csv(hourly.data.daily.cal, file.path(IntermediateResults, paste(output.name, '.daily.cal.csv',sep = '')))
+  
+```
+# output the hourly data
+```{r, echo=FALSE}
+ 
+short_summary(hourly.data.new)
+
+  hourly.data.output <- 
+  hourly.data %>% 
+   mutate_at('relativehumi_avg',funs(replace(., .< 0, 0))) %>% 
+   mutate_at('relativehumi_avg',funs(replace(., .> 100, 100))) %>%   
+   mutate_at('windspeed_avg',funs(replace(., .< 0, 0))) %>% 
+   mutate_if(is.numeric,funs(replace(.,is.nan(.),NA))) %>% 
+   group_by(day,hour) %>%
+   #mutate_at(vars(winddirectio_avg),funs(replace(., .>360, NA)))%>%
+   mutate_at(vars(relativehumi_avg:windspeed_avg),funs(replace(.,is.na(.),mean(.,na.rm=TRUE))))%>%
+   ungroup(.) %>% 
+   distinct(year,day, hour, .keep_all = TRUE) %>% 
+   arrange(year,day,hour) %>% 
+   filter(!(year == 1997 & day == 1 & hour == 0)) %>% 
+   mutate(stn.no. = siteid, max.temp = airtemperatu_max, min.temp = airtemperatu_min, 
+          mean.temp = airtemperatu_avg, mean.rh = relativehumi_avg, total.rain = rain_tot,
+          wind.m.s = windspeed_avg) %>%  
+   filter(!is.na(year))
+   
+
+  glimpse(hourly.data.output)
+
+  short_summary(hourly.data.output)  
+
+  # View(hourly.data.hourly)
+  write.csv(hourly.data.output, file.path(IntermediateResults,                        paste(output.name, '.csv',sep = '')))
+```

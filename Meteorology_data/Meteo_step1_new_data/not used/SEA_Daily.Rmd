@@ -1,0 +1,186 @@
+---
+title: "Checking and tiding up the climate data"
+author: "Junqi ZHU"
+output:
+  html_document: default
+---
+
+```{r, warning=FALSE, echo=FALSE, tidy=TRUE, error=FALSE, message=FALSE}
+ rm(list = ls())
+    {
+    library(plyr)
+    l_ply(list('tidyverse','readxl','tidyr','dplyr','ggplot2','broom','ggthemes','plotly','purrr',
+               'reshape2','cowplot','grid', 'reshape2','lubridate', 'RColorBrewer', 'datacheck'), 
+          require, character.only = T)
+    # tidyverse_update(recursive = FALSE) #updating packages
+    #get the current working directory
+    MainDir <- list(PROJHOME = normalizePath(getwd()))
+    # Input and output directory data file location
+    ExpData = file.path(MainDir, 'ExpData')
+    # figure output directory, mainly the the place for paper writing 
+    FigureOutput = file.path(MainDir, 'Figures')
+    
+    # Output directory, final results except figures, like statistics, and intermediate data set
+    IntermediateResults = file.path(MainDir, 'Intermediate results')  
+    SupportingFunctions = file.path(MainDir, 'Supporting functions')
+    CustomizedFunctions = file.path(MainDir, 'customizedFunctionsLib')
+    
+    # Load all functions
+    source(file.path(CustomizedFunctions,'Customized_curve_fitting_functions.R'))
+    source(file.path(CustomizedFunctions,'Customized_functions_data_reconstruction.R'))
+    source(file.path(CustomizedFunctions,'Customized_functions_for_climate.R'))
+    
+    source(file.path(SupportingFunctions,'Layout_of_ggplot.R'))
+    source(file.path(SupportingFunctions,'Specific_functions.R'))
+    # lsf.str()  #list of functions
+    } 
+```
+
+# A remind of the subject that you are working on
+```{r}
+current.region <- 'Site1003_SEA'
+current.subject <- 'Daily_MetData'
+current.year <- 'whole'
+
+output.name <- paste(current.region, current.subject, current.year, sep = '_')
+output.name
+
+```
+
+## Load the data
+```{r, warning=FALSE, echo=FALSE, error=FALSE, message=FALSE}
+
+daily.data.24am <- 
+  tbl_df(read_csv(file.path(ExpData, 'Site1003_SEA_Daily.csv'), col_names = F)) %>% 
+  slice(-c(1:2)) %>% 
+  select(2:20) %>%
+  setNames(gsub(" ",".",tolower(.[1,]))) %>%
+  slice(-c(1:3)) %>% 
+  mutate(date = as.Date(date, format="%d/%m/%Y")) %>% 
+  mutate_if(is.character, funs( as.numeric(as.character(.)))) %>%
+  mutate(day = yday(date), hour = "24:00") %>% 
+  # filter(year >= 2018) %>% 
+  select(stn.no. = siteid, year, day, date, max.temp = maximum, min.temp = minimum,
+         total.rain = rain, mean.wind.speed = windspeed_avg, solar.energy)
+
+glimpse(daily.data.24am)
+
+```
+
+## create a complete records of days
+```{r, warning=FALSE, echo=FALSE, error=FALSE, message=FALSE}
+first.day <- first(daily.data.24am$day)
+first.year <- first(daily.data.24am$year)
+last.day <- last(daily.data.24am$day)
+last.year <- last(daily.data.24am$year)
+
+start.date <- as.Date(first.day, origin = paste(first.year-1, 12, 31, sep = '-'))
+end.date <- as.Date(last.day, origin = paste(last.year-1, 12, 31, sep = '-'))
+start.date
+end.date
+# yday(end.date)
+
+complete.year.day <- 
+  data_frame(date = seq.Date(from = start.date,to = end.date, by = 'day')) %>% 
+  mutate(year = year(date), day.of.year = yday(date))
+
+glimpse(complete.year.day)
+glimpse(daily.data.24am)
+  
+```
+# Check the missing data and replace missing value
+```{r, fig.width=15, fig.height=25,echo=FALSE}
+
+ # Check whether there is missing records
+# complete.daily.date <- 
+right_join(daily.data.24am, complete.year.day, by = c('year','day' ='day.of.year','date')) %>% 
+  filter(is.na(min.temp))
+    # filter(min.temp <= -15)
+   # filter(max.temp >= 40)
+  
+  # , max.rh, min.rh humidity data is not good for seaview
+complete.daily.24am <-
+  right_join(daily.data.24am, complete.year.day, by = c('year','day' ='day.of.year', 'date')) %>% 
+  select(stn.no.,year, day, date, total.rain, max.temp, min.temp, daily.solar.rad.mj.m2 = solar.energy,
+        mean.wind.speed) %>% 
+   group_by(day) %>% 
+   mutate(stn.no. = 131) %>% 
+   mutate(min.temp = if_else(min.temp <= -15, as.double(NA), min.temp)) %>% 
+   mutate(daily.solar.rad.mj.m2 = if_else(daily.solar.rad.mj.m2<0, 0, daily.solar.rad.mj.m2)) %>% 
+   mutate_at(vars(max.temp:mean.wind.speed),funs(replace(.,is.na(.),mean(.,na.rm=TRUE)))) %>% 
+   mutate_at('total.rain',funs(replace(.,is.na(.),0))) %>%
+   ungroup(.) %>% 
+   distinct(date, .keep_all = TRUE) 
+
+  # glimpse(complete.daily.24am)
+short_summary(complete.daily.24am)
+  
+```
+
+## combine with hourl calculated data
+###relative humidity and sometimes radiation or wind speed is missing from the daily data
+```{r, echo=FALSE, error=FALSE, message=FALSE, warning=FALSE}
+# relative humidity data are mainly missing from the data
+daily.hourl.cal <- 
+  tbl_df(read_csv(file.path(IntermediateResults, 
+                                             'Site1003_SEA_Hourly_MetData_all.daily.cal.csv'))) 
+  
+
+glimpse(daily.hourl.cal)
+
+complete.daily.data <- 
+  full_join(complete.daily.24am, daily.hourl.cal, by = c('year','day')) %>% 
+  group_by(day) %>% 
+  mutate_if(is.numeric,funs(replace(.,is.na(.), mean(.,na.rm=TRUE)))) %>% 
+  mutate(vpd = VPD((max.temp +min.temp)/2, relativehumi_avg/100)) %>% 
+  mutate(relativehumi_avg = relativehumi_avg/100) %>% 
+  select(stn.no.,year,day, max.temp, min.temp, total.rain, mean.wind.speed, relativehumi_avg, vpd, daily.solar.rad.mj.m2)  
+    
+  
+    
+short_summary(complete.daily.data)  
+
+```
+
+
+# export the data
+```{r, fig.width=15, fig.height=25,echo=FALSE}
+# relative humidity data are mainly missing from the data
+
+
+output.data <- 
+  complete.daily.data %>% 
+  mutate(year = format(year, scientific = FALSE)) %>% 
+  mutate_at(vars(total.rain:mean.wind.speed), round, 2) %>% 
+  ungroup() %>% 
+  mutate(year = as.integer(year), day=as.integer(day)) %>% 
+  mutate(station = "SEA_Seaview") %>% 
+   select(station,year,day, max.temp, min.temp, total.rain, mean.wind.speed, relativehumi_avg, vpd, daily.solar.rad.mj.m2)  
+  
+short_summary(output.data)
+
+write_csv(output.data, file.path(IntermediateResults, paste(output.name, "APSIM_input.csv", sep = '_')))
+
+write_tsv(output.data, file.path(IntermediateResults, paste(output.name, "APSIM_input.met", sep = '_')))
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
