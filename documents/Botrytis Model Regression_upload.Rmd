@@ -1,0 +1,618 @@
+---
+title: "Botrytis Disease Model Regression"
+author: "Yao Liu"
+date: "2023-06-08"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r, warning=FALSE, echo=FALSE, tidy=TRUE, error=FALSE, message=FALSE}
+ rm(list = ls())
+    {
+    library(plyr)
+    l_ply(list('tidyverse','readxl','ggplot2','readr','tidyr','dplyr','dbplyr','purrr','broom','ggthemes','plotly','RcppRoll','MASS','scales',
+               'caret','ggpubr','compare','gtable','grid','viridis','reshape2','cowplot','lubridate', 'RColorBrewer', 'datacheck','car','ggrepel',
+               'openair','knitr','zoo','SciViews','data.table', 'janitor','RSQLite','ggthemes','stringr','nnet','egg','gridExtra','pander','stats',
+               'DEoptim','lme4','lmtest','lmerTest','tinytex','patchwork','glmnet','nlme','Matrix','corrplot','psych','Hmisc','PerformanceAnalytics',
+               'mgcv'),
+          require, character.only = T)
+    # tidyverse_update(recursive = FALSE) 
+    #get the current working directory
+    MainDir <- list(PROJHOME = normalizePath(getwd()))
+    # Input and output directory data file location
+    InputData = file.path(MainDir, 'InputData')
+    # Input and output directory data file location
+    OutputData = file.path(MainDir, 'OutputData')
+    # figure output directory, mainly the the place for paper writing 
+    FigureOutput = file.path(MainDir, 'Figures')
+    
+    CustomizedFunctions = file.path(MainDir,'Functions')
+
+    # Load all functions
+#    source(file.path(CustomizedFunctions,'Abundance_conidia.R'))
+#    source(file.path(CustomizedFunctions,'Calculate_DAWS.R'))
+#    source(file.path(CustomizedFunctions,'Compare_BBCH_DAWS.R'))
+#    source(file.path(CustomizedFunctions,'Create_New_Managements.R'))
+    } 
+```
+
+```{r setup, include=FALSE}
+options(scipen=999)
+  
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE,
+                      fig.align = "center", 
+                      fig.width = 14, fig.height = 10, dpi = 300)
+#Constants
+outlier.colour = "#ff0000"
+
+```
+
+## Simulation set up
+This model is coded based on: A Mechanistic Model of Botrytis cinerea on Grapevines That Includes Weather, Vine Growth Stage, and the Main Infection Pathways Elisa González-Domínguez,Tito Caffi,Nicola Ciliberti,Vittorio Rossi Published: October 12, 2015 https://doi.org/10.1371/journal.pone.0140444
+
+The mechanistic model developed by González-Domínguez et al. (2015) accounts for weather, vine growth stage, and the main infection pathways. The model considers two infection periods: the first period from "inflorescences clearly visible" to "berries groat-sized," and the second period from "majority of berries touching" to "berries ripe for harvest." During the first period, the model calculates the severity of infection on inflorescences and young clusters caused by conidia (SEV1). During the second period, the model calculates the severity of infection on ripening berries by conidia (SEV2) and the severity of berry-to-berry infection caused by mycelium (SEV3).
+
+## Diagram
+
+```{r f1, echo=FALSE, fig.cap="Fig.1 Relation diagram of the model simulating the life ccyle of botrytis cinerea", out.width = '100%'}
+knitr::include_graphics(file.path(InputData, 'Diagram.png' ))
+figure_number <- 2
+```
+
+### Calculate CISO
+
+The relative abundance of conidia on these sources ($CISO$) on any day $i$ of the grape-growing season depends on the rate at which the mycelium grows and saprophytically colonises the source tissue ($MYGR$) and on the rate of spore production ($SPOR$), as follows:
+
+\[CISO_i = \frac{\sum_{i-6}^n MYGR_n \times SPOR_n} {7}\]
+
+with
+  \[MYGR_n = 3.78\times Teq_n ^{0.9}\times (1-Teq_n))^{0.475} \times Mf_n\]
+  \[SPOR_n = 3.7\times Teq_n ^{0.9} \times (1-Teq_n))^{10.49}\times(-3.595 +0.097\times RH_n-0.0005\times RH_n^2)\]
+
+### calculate RISk
+
+**In the first infection window (stages 53 to 73)**, the model calculates an infection rate on inflorescences and young clusters ($INF1$) as:
+
+  \[INF1_i =\frac {(3.56\times Teq_i^{0.99}\times (1-Teq_i))^{0.71}} {(1+e^{(1.85-0.19\times WD_i)})} \times SUS1_i\]
+
+where $Teq$ = temperature equivalent as described for eq (2), with $Tmin$ = 0°C and $Tmax$ = 35°C;
+$WD$ = wetness duration (in hours); and
+
+  \[SUS1_i = -379.09\times (\frac{GS_i} {100})^3+671.25\times (\frac{GS_i} {100})^2-390.33\times (\frac{GS_i} {100})+75.209\]
+  
+In the latter equation, $SUS$ = relative susceptibility of the inflorescences and young clusters, and $GS$ = growth stage of the plant based on the stages of the scale of Lorenz et al. [31].
+
+Relative infection severity in the first infection window is then calculated as:  
+
+  \[RIS1_i = CISO_i\times INF1_i\]
+  
+
+**In the second infection window (stages 79 to 89)**, the model calculates two infection rates on ripening berries: one for conidial infection ($INF2$) and another for berry-to-berry infection ($INF3$).Infection rate for conidial infection is calculated as follows:
+
+  \[INF2_i = (6.416\times Teq_i^{1.292}\times (1-Teq_i))^{0.469}\times e^{-2.3\times e^{(-0.048\times WD_i)}} \times SUS2_i\]
+
+where $Teq$ = temperature equivalent as described for eq (2) with $Tmin$ = 0°C and $Tmax$ = 35°C, and
+
+  \[SUS2_i = 5\times 10^{-17}\times e^{0.4219\times GS_i} \]
+
+Relative infection severity for conidial infection is then calculated as follows:
+
+   \[RIS2_i = CISO_i\times INF2_i\]
+
+Infection rate for berry-to-berry infection during the second infection window is calculated as follows:
+
+  \[INF3_i = \frac{(7.75\times Teq_i^{2.14}\times (1-Teq_i))^{0.469}} {1+ e^{(35.36-40.26\times \frac{RH_i} {100})}} \times SUS3_i\]
+
+where $Teq$ = temperature equivalent as described in eq (2) with $Tmin$ = 0, and $Tmax$ = 30°C, and
+
+\[SUS3_i = 0.0546\times GS_i-3.87 (when SUS3_i >1,then SUS3_i =1) \]
+
+Relative infection severity for berry-to-berry infection is then calculated as follows:
+
+ \[RIS3_i = INF3_i\times MYGR_i\]
+ 
+ 
+Daily values of relative infection severity (i.e., RIS1, RIS2, and RIS3) are finally accumulated over the time of the infection window that they refer to. These accumulated values produce new variables (named SEV1, SEV2, and SEV3, respectively), which provide a picture of the total risk of infection.
+
+## load Sauvignon blanc Severity calcution result.csv
+
+```{r,warning=FALSE, echo=FALSE, error=FALSE}
+
+result_sau <- read.csv("H:/Sauvignon blanc Severity calcution result.csv") %>% 
+  mutate(Site = as.factor(Site)) %>%
+  na.omit()
+
+```
+
+## correlation_coefficients
+### Fig. `r figure_number` correlation_coefficients
+
+```{r coefficients, warning=FALSE, error=FALSE, message=FALSE}
+sau  <- result_sau %>%
+  dplyr::select(-c('Site','Date','Variety','pruning','year','doy','doy.july1st','season','previous.season','first_sev1','first_sev23','end_sev1','end_sev23'))%>%
+  mutate(across(everything(), as.numeric)) %>%
+  drop_na()
+
+cor_matrix <- cor_matrix <- cor(sau)
+cor_df <- as.data.frame(cor_matrix)
+
+#png(file='H:/correlogram by PerformanceAnalytics.png', height=1000, width=1000)
+chart.Correlation(sau, histogram=TRUE, pch=25)
+
+dev.off()
+figure_number <- figure_number +1 
+```
+
+## sumarry of  LM modeles
+
+```{r, warning=FALSE, error=FALSE, message=FALSE}
+lm.formulas <- c("tmean_sev1", "tmax_sev1", "tmin_sev1", "rh_sev1", "rain_sev1", "wetness_sev1", "WD_sev1",
+                 "tmean_sev1 + rain_sev1", "tmean_sev1 + rh_sev1", "tmean_sev1 + wetness_sev1", "tmean_sev1 + WD_sev1",
+                 "tmean_sev1 * rain_sev1", "tmean_sev1 * rh_sev1", "tmean_sev1 * wetness_sev1", "tmean_sev1 * WD_sev1",
+                 "tmean_sev1 * rh_sev1 + rain_sev1", "tmean_sev1 * rh_sev1 + wetness_sev1", "tmean_sev1 * rh_sev1 + WD_sev1",
+                 "tmean_sev1 * rain_sev1 + rh_sev1", "tmean_sev1 * rain_sev1 + wetness_sev1", "tmean_sev1 * rain_sev1 + WD_sev1",
+
+                 "tmax_sev1 + tmin_sev1 + rain_sev1", "tmax_sev1 + tmin_sev1 + rh_sev1", "tmax_sev1 + tmin_sev1 + wetness_sev1", "tmax_sev1 + tmin_sev1 + WD_sev1",
+                 "tmax_sev1 * tmin_sev1 + rain_sev1", "tmax_sev1 * tmin_sev1 + rh_sev1", "tmax_sev1 * tmin_sev1 + wetness_sev1", "tmax_sev1 * tmin_sev1 + WD_sev1",
+
+                 "tmax_sev1 + tmin_sev1 + wetness_sev1 + rain_sev1",
+                 
+                 "tmean_sev23", "tmax_sev23", "tmin_sev23", "rh_sev23", "rain_sev23", "wetness_sev23", "WD_sev23",
+                 "tmean_sev23 + rain_sev23", "tmean_sev23 + rh_sev23", "tmean_sev23 + wetness_sev23", "tmean_sev23 + WD_sev23",
+                 "tmean_sev23 * rain_sev23", "tmean_sev23 * rh_sev23", "tmean_sev23 * wetness_sev23", "tmean_sev23 * WD_sev23",
+                 "tmean_sev23 * rh_sev23 + rain_sev23", "tmean_sev23 * rh_sev23 + wetness_sev23", "tmean_sev23 * rh_sev23 + WD_sev23",
+                 "tmean_sev23 * rain_sev23 + rh_sev23", "tmean_sev23 * rain_sev23 + wetness_sev23", "tmean_sev23 * rain_sev23 + WD_sev23",
+                 "tmax_sev23 + tmin_sev23 + rain_sev23", "tmax_sev23 + tmin_sev23 + rh_sev23", "tmax_sev23 + tmin_sev23 + wetness_sev23", "tmax_sev23 + tmin_sev23 + WD_sev23",
+                 "tmax_sev23 * tmin_sev23 + rain_sev23", "tmax_sev23 * tmin_sev23 + rh_sev23", "tmax_sev23 * tmin_sev23 + wetness_sev23", "tmax_sev23 * tmin_sev23 + WD_sev23",
+                 "tmax_sev23 + tmin_sev23 + wetness_sev23 + rain_sev23",
+                 "sev1", "sev2", "sev3", "sev1+sev2", "sev1+sev3", "sev2+sev3","sev1+sev23", "sev1+sev2+sev3","sev2+sev3+sev23","sev3+sev23+rh_sev1+rain_sev23","sev2+sev3+rh_sev1+rain_sev23","sev2+sev3+sev23+rh_sev1+rain_sev23","sev2+sev3+sev23+rh_sev1+rh_sev23+rain_sev23")
+
+lm.models.calculation <- function(df, clim.formu, parameters){
+  cat(clim.formu, "\n")
+  periods <- strsplit(gsub("\\*", "\\+" , as.character(clim.formu)), " \\+ ")
+  
+  clim.formula <- as.formula(paste("Severity ~", as.character(clim.formu)))
+  
+  mod <- df %>% lm(clim.formula, data =., na.action = na.omit)
+  
+  R2 <- summary(mod)$adj.r.square
+  loglik <- glance(mod)$logLik
+  aic <- AIC(mod)
+  df.res <- glance(mod)$df.residual
+  
+  if(!grepl("\\*", clim.formu)) 
+  {
+    eq <- paste("Severity =", as.character(clim.formu))
+  } else {
+    eq <- NA
+  }
+  
+  df.temp <- data.frame(formul =as.character(clim.formu), 
+                        R2, logLik = loglik, aic = aic, df = df.res)
+  return(df.temp)
+}
+
+lm.summary <- map_df(lm.formulas, ~lm.models.calculation(result_sau, .x))
+
+#write.csv(lm.summary, file = file.path(OutputData, "compare_lm_models.csv"))
+
+```
+
+## sumarry of Loess modeles
+
+```{r, warning=FALSE, error=FALSE, message=FALSE}
+
+## Define the loess.models.calculation function
+loess.models.calculation <- function(data, formula) {
+  # Calculate the loess model using the provided formula
+  model <- loess(formula = formula, data = data)
+  
+  # Create a data frame with the formula and evaluation parameters
+  result <- data.frame(Formula = formula,
+                       MSE = NA,
+                       Adj_R_squared = NA)
+  
+  # Calculate evaluation metrics
+  residuals <- resid(model)
+  sum_sq_resid <- sum(residuals^2)
+  df_resid <- length(residuals) - length(coef(model))
+  mse <- sum_sq_resid / df_resid
+  adj_r_squared <- 1 - mse / var(data$Severity)
+  
+  # Update the evaluation parameters in the result data frame
+  result$MSE <- mse
+  result$Adj_R_squared <- adj_r_squared
+  
+  return(result)
+}
+
+loess.formulas <-  paste("Severity ~", lm.formulas, sep = "") 
+loess.formulas <- loess.formulas[-length(loess.formulas)+2:-length(loess.formulas)]
+
+# Perform the loess models calculation for each formula and combine the results
+loess.summary <- map_df(loess.formulas, ~loess.models.calculation(result_sau, formula = .x))
+
+#write.csv(loess.summary, file = file.path(OutputData, "compare_loess_models.csv"))
+
+```
+
+## sumarry of LMER modeles
+
+```{r, warning=FALSE, error=FALSE, message=FALSE}
+
+lmer.models.calculation <- function(data, formula) {
+  # Calculate the lmer model using the provided formula
+  model <- lmer(formula = formula, data = data)
+  
+  # Create a data frame with the formula and evaluation parameters
+  result <- data.frame(Formula = formula,
+                       MSE = NA,
+                       Adj_R_squared = NA)
+  
+  # Calculate evaluation metrics
+  residuals <- resid(model)
+  sum_sq_resid <- sum(residuals^2)
+  df_resid <- length(residuals) - length(coef(model))
+  mse <- sum_sq_resid / df_resid
+  adj_r_squared <- 1 - mse / var(data$Severity)
+  
+  # Update the evaluation parameters in the result data frame
+  result$MSE <- mse
+  result$Adj_R_squared <- adj_r_squared
+  
+  return(result)
+}
+
+
+lmer.formulas <- paste("Severity ~", lm.formulas,"+(1|Site)", sep = "") 
+
+# Perform the lmer models calculation for each formula and combine the results
+
+lmer.summary <- map_df(lmer.formulas, ~lmer.models.calculation(result_sau, .x))
+
+#write.csv(lmer.summary, file = file.path(OutputData, "compare_lmer_models.csv"))
+
+```
+
+## sumarry of GAM modeles
+
+```{r, warning=FALSE, error=FALSE, message=FALSE}
+
+gam.models.calculation <- function(data, formula) {
+  # Calculate the linear model using the provided formula
+  model <- lm(formula = formula, data = data)
+  
+  # Create a data frame with the formula and evaluation parameters
+  result <- data.frame(Formula = formula,
+                       MSE = NA,
+                       Adj_R_squared = NA)
+  
+  # Calculate evaluation metrics
+  residuals <- resid(model)
+  sum_sq_resid <- sum(residuals^2)
+  df_resid <- length(residuals) - length(coef(model))
+  mse <- sum_sq_resid / df_resid
+  adj_r_squared <- 1 - mse / var(data$Severity)
+  
+  # Extract extra special terms from the formula
+  extra_special_terms <- get_extra_special_terms(formula)
+  
+  # Update the evaluation parameters in the result data frame
+  result$MSE <- mse
+  result$Adj_R_squared <- adj_r_squared
+  result$Extra_Special_Terms <- paste(extra_special_terms, collapse = ", ")
+  
+  return(result)
+}
+
+
+# Function to extract extra special terms from a formula
+get_extra_special_terms <- function(formula) {
+  # Split the formula by the '+' sign
+  formula_terms <- unlist(strsplit(as.character(formula), "\\+"))
+  
+  # Initialize an empty vector to store extra special terms
+  extra_special_terms <- character(0)
+  
+  # Iterate over the formula terms and check for extra special patterns
+  for (term in formula_terms) {
+    if (grepl("^(s|te|ti|t2)\\(", term)) {
+      extra_special_terms <- c(extra_special_terms, term)
+    }
+  }
+  
+  # Return the extra special terms
+  return(extra_special_terms)
+}
+
+
+gam.formulas <- paste("Severity ~", lm.formulas, sep = "")
+#gam.formulas <- gam.formulas[65]
+# Perform the gam models calculation for each formula and combine the results
+
+gam.summary <- map_df(gam.formulas, ~gam.models.calculation(result_sau, .x))
+
+#write.csv(gam.summary, file = file.path(OutputData, "compare_gam_models.csv"))
+```
+
+## sumarry of GLM modeles
+
+```{r, warning=FALSE, error=FALSE, message=FALSE}
+
+glm.models.calculation <- function(data, formula) {
+  # Calculate the glm model using the provided formula
+  model <- glm(formula = formula, data = data)
+  
+  # Create a data frame with the formula and evaluation parameters
+  result <- data.frame(Formula = formula,
+                       MSE = NA,
+                       Adj_R_squared = NA)
+  
+  # Calculate evaluation metrics
+  residuals <- resid(model)
+  sum_sq_resid <- sum(residuals^2)
+  df_resid <- length(residuals) - length(coef(model))
+  mse <- sum_sq_resid / df_resid
+  adj_r_squared <- 1 - mse / var(data$Severity)
+  
+  # Update the evaluation parameters in the result data frame
+  result$MSE <- mse
+  result$Adj_R_squared <- adj_r_squared
+  
+  return(result)
+}
+
+
+glm.formulas <- paste("Severity ~", lm.formulas,sep = "") 
+
+# Perform the glm models calculation for each formula and combine the results
+
+glm.summary <- map_df(glm.formulas, ~glm.models.calculation(result_sau, .x))
+
+write.csv(glm.summary, file = file.path(OutputData, "compare_glm_models.csv"))
+
+```
+
+### Fig. `r figure_number` Severity and sev2,sev3,sev23,rh_sev1,rh_sev23,rain_sev23 linear regression Plot
+
+```{r LM Regression, warning=FALSE, echo=FALSE, error=FALSE, message=FALSE}
+
+
+model <- lm(Severity ~ sev2+sev3+sev23+rh_sev1+rh_sev23+rain_sev23, data = result_sau, na.action = na.omit)
+result_sau$predicted_lm <- pmax(predict(model), 0)
+
+# view the summary of the model
+summary(model)
+
+boot.sev <- Boot(model)
+summary(boot.sev)
+confint(model)
+
+# Plot the observed severity vs the predicted severity
+plot(result_sau$predicted_lm, result_sau$Severity, 
+     main = "LM Regression",
+     xlab = "Predicted Severity", ylab = "Observed Severity",
+     xlim = c(0, 1), ylim = c(0, 1))
+
+# Add a 45-degree reference line
+abline(a = 0, b = 1, col = "red")
+
+# Mark data points with Severity > 0.4
+high_severity_data <- subset(result_sau, Severity > 0.4)
+text(high_severity_data$predicted_lm, high_severity_data$Severity,
+     labels = paste(high_severity_data$Site, high_severity_data$Date),
+     pos = 3, offset = 0.5, col = "blue")
+
+# Analysis of abnormal observation points: outliers, high leverage points, strong influence points
+
+fit<-lm(Severity ~ sev2+sev3+sev23+rh_sev1+rh_sev23+rain_sev23, data = result_sau, na.action = na.omit)
+
+influencePlot(fit,id.method="identify",main="influence Plot",sub="cook's distance")
+
+figure_number <- figure_number+1
+
+```
+
+### Fig. `r figure_number` Severity and sev2,sev3,sev23,rh_sev1,rh_sev23,rain_sev23,Site regression Plot
+
+```{r LMER Regression, warning=FALSE, echo=FALSE, error=FALSE, message=FALSE}
+
+model <-  lmer(Severity ~ sev2+sev3+sev23+rh_sev1+rh_sev23+rain_sev23 + (1|Site), REML=FALSE,data = result_sau, na.action = na.omit)
+result_sau$predicted_lmer <- pmax(predict(model), 0)
+
+# view the summary of the model
+summary(model)
+
+
+# Plot the observed severity vs the predicted severity
+plot(result_sau$predicted_lmer, result_sau$Severity, 
+     main = "LMER Regression",
+     xlab = "Predicted Severity", ylab = "Observed Severity",
+     xlim = c(0, 1), ylim = c(0, 1))
+
+# Add a 45-degree reference line
+abline(a = 0, b = 1, col = "red")
+
+# Mark data points with Severity > 0.4
+high_severity_data <- subset(result_sau, Severity > 0.4)
+text(high_severity_data$predicted_lmer, high_severity_data$Severity,
+     labels = paste(high_severity_data$Site, high_severity_data$Date),
+     pos = 3, offset = 0.5, col = "blue")
+
+fit<-lmer(Severity ~ sev2+sev3+sev23+rh_sev1+rh_sev23+rain_sev23 + (1|Site), data = result_sau, na.action = na.omit)
+
+influencePlot(fit,id.method="identify",main="influence Plot",sub="cook's distance")
+
+figure_number <- figure_number+1
+```
+
+### Fig. `r figure_number` Severity sev1 and sev3 loess regression Plot
+
+```{r Loess Regression, warning=FALSE, echo=FALSE, error=FALSE, message=FALSE}
+
+model <- loess(Severity ~ sev1 + sev3, data = result_sau, na.action = na.omit)
+result_sau$loess_loess <- pmax(predict(model), 0)
+
+summary(model)
+
+plot(result_sau$loess_loess, result_sau$Severity, 
+     main = "Loess Regression",
+     xlab = "Predicted Severity", ylab = "Observed Severity",
+     xlim = c(0, 1), ylim = c(0, 1))
+
+# Add a 45-degree reference line
+abline(a = 0, b = 1, col = "red")
+
+# Mark data points with Severity > 0.4
+high_severity_data <- subset(result_sau, Severity > 0.4)
+text(high_severity_data$loess_loess, high_severity_data$Severity,
+     labels = paste(high_severity_data$Site, high_severity_data$Date),
+     pos = 3, offset = 0.5, col = "blue")
+
+figure_number <- figure_number+1
+```
+
+## build an optimize LM function
+
+```{r, warning=FALSE, error=FALSE, message=FALSE, eval= FALSE}
+df <- result_sau %>%
+#   dplyr::select('Severity','sev2','sev3')
+    dplyr::select('Site','Severity','sev1','sev2','sev3','sev23',
+                'tmean_sev1','tmax_sev1','tmin_sev1','wetness_sev1','rain_sev1','rh_sev1','WD_sev1',
+                'tmean_sev23','tmax_sev23','tmin_sev23','wetness_sev23','rain_sev23','rh_sev23','WD_sev23')
+
+cost.objective <- function(parm) {
+  coef1  <- parm[1]
+  coef2  <- parm[2]
+  coef3  <- parm[3]
+  
+  int1 <- df[1:3,] %>%
+    mutate(Severity = as.numeric(Severity),
+           sev2 = as.numeric(sev2),
+           sev3 = as.numeric(sev3)) %>%
+#    group_by(Site) %>%
+    summarise(Severity = first(Severity),
+              sev2 = first(sev2),
+              sev3 = first(sev3),
+              coef1 = coef(lm(Severity ~ sev2 + sev3, data = .))[["sev2"]],
+              coef2 = coef(lm(Severity ~ sev2 + sev3, data = .))[["sev3"]],
+              coef3 = coef(lm(Severity ~ sev2 + sev3, data = .))[["(Intercept)"]],
+              .groups = "drop") #%>%
+#    ungroup() %>% 
+#    mutate(Site = as.factor(Site))
+  
+  mod <-  lm(Severity ~ sev2 + sev3,
+             data = na.omit(int1), na.action = na.omit)
+  
+  
+  cost <- -glance(mod)$logLik  
+#   
+# mod <-  lmer(Severity ~ sev1+sev2 + sev3 + (1|Site),
+#               REML=F,
+#               data = na.omit(int1), na.action = na.omit)
+#   
+#   cost <- -logLik(mod, REML=F) 
+  
+  return(cost)
+}
+
+# Define the objective function
+objective <- function(parm) {
+  fitted <- parm[1] + parm[2] * result_sau$sev2 + parm[3] * result_sau$sev3
+  residuals <- result_sau$Severity - fitted
+  return(sum(residuals^2))
+}
+
+# Set the bounds for the coefficients
+lower <- c(-1, -1, -1)  # Lower bounds for the coefficients
+upper <- c(1, 1, 1)     # Upper bounds for the coefficients
+
+# Use DEoptim to minimize the objective function
+minimization_result <- DEoptim(objective, lower = lower, upper = upper)
+minimized_coefs <- minimization_result$optim$bestmem
+
+# Calculate the minimized and maximized models
+minimized_model <- lm(Severity ~ sev2 + sev3, data = result_sau)
+minimized_model$coefficients <- minimized_coefs
+
+summary(minimized_model)
+
+
+# Plot the minimized and maximized models
+result_sau$predicted_min <- pmax(predict(minimized_model), 0)
+
+plot(result_sau$predicted_min, result_sau$Severity, 
+     main = "Minimized_model Regression",
+     xlab = "Predicted Severity", ylab = "Observed Severity",
+     xlim = c(0, 1), ylim = c(0, 1))
+
+# Add a 45-degree reference line
+abline(a = 0, b = 1, col = "red")
+
+# Mark data points with Severity > 0.4
+high_severity_data <- subset(result_sau, Severity > 0.4)
+
+text(high_severity_data$predicted_min, high_severity_data$Severity,
+     labels = paste(high_severity_data$Site, high_severity_data$Date),
+     pos = 3, offset = 0.5, col = "blue")
+
+```
+
+## build an optimize LMER function
+
+```{r, warning=FALSE, error=FALSE, message=FALSE, eval= FALSE}
+df <- result_sau %>%
+  dplyr::select('Site', 'Severity', 'sev1', 'sev2', 'sev3', 'sev23',
+                'tmean_sev1', 'tmax_sev1', 'tmin_sev1', 'wetness_sev1', 'rain_sev1', 'rh_sev1', 'WD_sev1', 
+                'tmean_sev23', 'tmax_sev23', 'tmin_sev23', 'wetness_sev23', 'rain_sev23', 'rh_sev23', 'WD_sev23') %>% 
+  mutate(Site = as.factor(Site))
+
+# Convert relevant columns to appropriate data types
+result_sau$Severity <- as.numeric(result_sau$Severity)
+result_sau$sev2 <- as.numeric(result_sau$sev2)
+result_sau$sev3 <- as.numeric(result_sau$sev3)
+
+#  Fit the mixed linear model
+model_formula <- as.formula("Severity ~ sev2 + sev3 + (1|Site)")
+model <- lmer(model_formula, data = result_sau)
+
+# Define negative log-likelihood function
+neg_log_likelihood <- function(params) {
+  fixed_effects <- c(params["sev2"], params["sev3"])
+  updated_formula <- update(model_formula, sev2 + sev3 ~ .)
+  updated_model <- update(model, formula = updated_formula)
+  sigma <- exp(params["log_sigma"])
+  logLikelihood <- logLik(updated_model)
+  -logLikelihood
+}
+
+# Optimize the negative log-likelihood function
+bounds <- c(sev2 = c(0, 10), sev3 = c(0, 10), log_sigma = c(-10, 10))
+lower <- bounds[c(TRUE, FALSE)]
+upper <- bounds[c(FALSE, TRUE)]
+result <- DEoptim(neg_log_likelihood, lower = lower, upper = upper)
+
+# Extract optimized parameter values
+optimal_params <- result$optim$bestmem
+
+
+# Plot the minimized and maximized models
+result_sau$predicted_min <- pmax(predict(minimized_model), 0)
+
+plot(result_sau$predicted_min, result_sau$Severity, 
+     main = "Minimized_model Regression",
+     xlab = "Predicted Severity", ylab = "Observed Severity",
+     xlim = c(0, 1), ylim = c(0, 1))
+
+# Add a 45-degree reference line
+abline(a = 0, b = 1, col = "red")
+
+# Mark data points with Severity > 0.4
+high_severity_data <- subset(result_sau, Severity > 0.4)
+
+text(high_severity_data$predicted_min, high_severity_data$Severity,
+     labels = paste(high_severity_data$Site, high_severity_data$Date),
+     pos = 3, offset = 0.5, col = "blue")
+
+```

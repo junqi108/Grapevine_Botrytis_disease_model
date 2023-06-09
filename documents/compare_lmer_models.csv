@@ -1,0 +1,73 @@
+"","Formula","MSE","Adj_R_squared"
+"1","Severity ~tmean_sev1+(1|Site)",0.015564417259861,0.241849564482394
+"2","Severity ~tmax_sev1+(1|Site)",0.0156154709103921,0.239362716003673
+"3","Severity ~tmin_sev1+(1|Site)",0.0155186545765387,0.244078687340771
+"4","Severity ~rh_sev1+(1|Site)",0.0141410661143573,0.311181700266308
+"5","Severity ~rain_sev1+(1|Site)",0.0162672284633305,0.207615284386914
+"6","Severity ~wetness_sev1+(1|Site)",0.0154516319318525,0.247343393394972
+"7","Severity ~WD_sev1+(1|Site)",0.0155743773947588,0.241364401402757
+"8","Severity ~tmean_sev1 + rain_sev1+(1|Site)",0.0155244081952682,0.243798425736834
+"9","Severity ~tmean_sev1 + rh_sev1+(1|Site)",0.0133524876473517,0.349593746038296
+"10","Severity ~tmean_sev1 + wetness_sev1+(1|Site)",0.0145933648384807,0.289150006502703
+"11","Severity ~tmean_sev1 + WD_sev1+(1|Site)",0.0147096581873021,0.283485300167431
+"12","Severity ~tmean_sev1 * rain_sev1+(1|Site)",0.015146776008265,0.262193075678552
+"13","Severity ~tmean_sev1 * rh_sev1+(1|Site)",0.0124109208707761,0.395457927768416
+"14","Severity ~tmean_sev1 * wetness_sev1+(1|Site)",0.0135136914352286,0.341741430082903
+"15","Severity ~tmean_sev1 * WD_sev1+(1|Site)",0.0138779066832373,0.324000325852035
+"16","Severity ~tmean_sev1 * rh_sev1 + rain_sev1+(1|Site)",0.0124201638729989,0.395007696574808
+"17","Severity ~tmean_sev1 * rh_sev1 + wetness_sev1+(1|Site)",0.0123335935197444,0.399224581147291
+"18","Severity ~tmean_sev1 * rh_sev1 + WD_sev1+(1|Site)",0.0123880590715345,0.396571537276714
+"19","Severity ~tmean_sev1 * rain_sev1 + rh_sev1+(1|Site)",0.0128371370630736,0.374696726984605
+"20","Severity ~tmean_sev1 * rain_sev1 + wetness_sev1+(1|Site)",0.0138772319147118,0.324033194159464
+"21","Severity ~tmean_sev1 * rain_sev1 + WD_sev1+(1|Site)",0.0140733561314618,0.314479886903433
+"22","Severity ~tmax_sev1 + tmin_sev1 + rain_sev1+(1|Site)",0.0153713329587334,0.251254795950264
+"23","Severity ~tmax_sev1 + tmin_sev1 + rh_sev1+(1|Site)",0.0130328186325935,0.365164981293304
+"24","Severity ~tmax_sev1 + tmin_sev1 + wetness_sev1+(1|Site)",0.0143080162144628,0.30304947861024
+"25","Severity ~tmax_sev1 + tmin_sev1 + WD_sev1+(1|Site)",0.0144541153917255,0.295932915682043
+"26","Severity ~tmax_sev1 * tmin_sev1 + rain_sev1+(1|Site)",0.0146502364947007,0.286379760099515
+"27","Severity ~tmax_sev1 * tmin_sev1 + rh_sev1+(1|Site)",0.0125436149473629,0.388994333900731
+"28","Severity ~tmax_sev1 * tmin_sev1 + wetness_sev1+(1|Site)",0.0135131746066659,0.341766605056909
+"29","Severity ~tmax_sev1 * tmin_sev1 + WD_sev1+(1|Site)",0.0136630412736019,0.334466525849951
+"30","Severity ~tmax_sev1 + tmin_sev1 + wetness_sev1 + rain_sev1+(1|Site)",0.0143258778870836,0.302179427733906
+"31","Severity ~tmean_sev23+(1|Site)",0.0160091864557904,0.220184637747987
+"32","Severity ~tmax_sev23+(1|Site)",0.016248655659012,0.208519974838717
+"33","Severity ~tmin_sev23+(1|Site)",0.0162476779843732,0.20856759785221
+"34","Severity ~rh_sev23+(1|Site)",0.01291882035297,0.370717893676839
+"35","Severity ~rain_sev23+(1|Site)",0.0117326420959424,0.428497221174452
+"36","Severity ~wetness_sev23+(1|Site)",0.0153496745552,0.252309787460537
+"37","Severity ~WD_sev23+(1|Site)",0.015434720849162,0.24816714056731
+"38","Severity ~tmean_sev23 + rain_sev23+(1|Site)",0.0115794375133888,0.435959891896202
+"39","Severity ~tmean_sev23 + rh_sev23+(1|Site)",0.0125283440223654,0.389738188183504
+"40","Severity ~tmean_sev23 + wetness_sev23+(1|Site)",0.0149673064625966,0.270935125698088
+"41","Severity ~tmean_sev23 + WD_sev23+(1|Site)",0.0150478703319286,0.267010819917712
+"42","Severity ~tmean_sev23 * rain_sev23+(1|Site)",0.0115855309487111,0.435663077658554
+"43","Severity ~tmean_sev23 * rh_sev23+(1|Site)",0.0124605514038989,0.393040400040018
+"44","Severity ~tmean_sev23 * wetness_sev23+(1|Site)",0.0147287718034664,0.282554266504084
+"45","Severity ~tmean_sev23 * WD_sev23+(1|Site)",0.0148606899840812,0.276128466911592
+"46","Severity ~tmean_sev23 * rh_sev23 + rain_sev23+(1|Site)",0.0106954754170755,0.479018121260773
+"47","Severity ~tmean_sev23 * rh_sev23 + wetness_sev23+(1|Site)",0.0124366604371398,0.394204140805315
+"48","Severity ~tmean_sev23 * rh_sev23 + WD_sev23+(1|Site)",0.0124386517015296,0.394107145335508
+"49","Severity ~tmean_sev23 * rain_sev23 + rh_sev23+(1|Site)",0.0106943897390073,0.479071005174541
+"50","Severity ~tmean_sev23 * rain_sev23 + wetness_sev23+(1|Site)",0.0112656908012235,0.451242648873153
+"51","Severity ~tmean_sev23 * rain_sev23 + WD_sev23+(1|Site)",0.0113855632782766,0.445403601437774
+"52","Severity ~tmax_sev23 + tmin_sev23 + rain_sev23+(1|Site)",0.0113936836804469,0.445008052645991
+"53","Severity ~tmax_sev23 + tmin_sev23 + rh_sev23+(1|Site)",0.0127222091072313,0.380294924354939
+"54","Severity ~tmax_sev23 + tmin_sev23 + wetness_sev23+(1|Site)",0.0153208979164679,0.253711511715496
+"55","Severity ~tmax_sev23 + tmin_sev23 + WD_sev23+(1|Site)",0.0154099586506577,0.249373319460291
+"56","Severity ~tmax_sev23 * tmin_sev23 + rain_sev23+(1|Site)",0.0104742829165166,0.48979251697583
+"57","Severity ~tmax_sev23 * tmin_sev23 + rh_sev23+(1|Site)",0.0126297500888582,0.384798648707529
+"58","Severity ~tmax_sev23 * tmin_sev23 + wetness_sev23+(1|Site)",0.0152780925732275,0.255796581080984
+"59","Severity ~tmax_sev23 * tmin_sev23 + WD_sev23+(1|Site)",0.0153532332774459,0.252136440346054
+"60","Severity ~tmax_sev23 + tmin_sev23 + wetness_sev23 + rain_sev23+(1|Site)",0.0109424659261776,0.466987091835254
+"61","Severity ~sev1+(1|Site)",0.01550280421348,0.244850766337077
+"62","Severity ~sev2+(1|Site)",0.0134432864892151,0.345170889701696
+"63","Severity ~sev3+(1|Site)",0.0100703610952548,0.509467747958902
+"64","Severity ~sev1+sev2+(1|Site)",0.0127647721454463,0.378221657786659
+"65","Severity ~sev1+sev3+(1|Site)",0.00996930086865651,0.514390441403172
+"66","Severity ~sev2+sev3+(1|Site)",0.0100319936934615,0.5113366430093
+"67","Severity ~sev1+sev2+sev3+(1|Site)",0.00995345230398781,0.515162432799014
+"68","Severity ~sev2+sev3+sev23+(1|Site)",0.0100319936934615,0.5113366430093
+"69","Severity ~sev3+sev23+rh_sev1+rain_sev23+(1|Site)",0.00915743655969958,0.553936752012837
+"70","Severity ~sev2+sev3+rh_sev1+rain_sev23+(1|Site)",0.00915743655940492,0.553936752027189
+"71","Severity ~sev2+sev3+sev23+rh_sev1+rain_sev23+(1|Site)",0.00915743655940492,0.553936752027189
+"72","Severity ~sev2+sev3+sev23+rh_sev1+rh_sev23+rain_sev23+(1|Site)",0.00857593545889574,0.58226195722083
