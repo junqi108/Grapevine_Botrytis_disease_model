@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.2.262">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>2_feature_analysis</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1.6em;
+  vertical-align: middle;
+}
+</style>
+
+
+<script src="2_feature_analysis_files/libs/clipboard/clipboard.min.js"></script>
+<script src="2_feature_analysis_files/libs/quarto-html/quarto.js"></script>
+<script src="2_feature_analysis_files/libs/quarto-html/popper.min.js"></script>
+<script src="2_feature_analysis_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="2_feature_analysis_files/libs/quarto-html/anchor.min.js"></script>
+<link href="2_feature_analysis_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="2_feature_analysis_files/libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="2_feature_analysis_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="2_feature_analysis_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="2_feature_analysis_files/libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+
+
+</head>
+
+<body class="fullcontent">
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">2_feature_analysis</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+</header>
+
+<section id="feature-analysis" class="level2">
+<h2 class="anchored" data-anchor-id="feature-analysis">Feature Analysis</h2>
+<p>Imports</p>
+<div class="cell" data-hash="2_feature_analysis_cache/html/load-data_a6d2253ae41f8e163769cc551153c3ad">
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 121 × 22
+   Site   pruning Sever…¹ year   sev1  sev2   sev3 sev23 tmean…² tmin_…³ tmax_…⁴
+   &lt;fct&gt;  &lt;fct&gt;     &lt;dbl&gt; &lt;fct&gt; &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;
+ 1 Booker 2-cane   0.0874 2005   9.90 1.25  2.21   3.47     15.5    9.80    20.5
+ 2 Booker 4-cane   0.171  2005   9.90 1.65  2.30   3.95     15.5    9.80    20.5
+ 3 Booker 2-cane   0.0363 2006   5.14 0.234 0.281  0.515    17.2   11.5     22.3
+ 4 Booker 2-cane   0.0563 2008   6.72 0.750 0.523  1.27     17.8   11.7     23.1
+ 5 Booker 4-cane   0.0774 2008   6.72 1.57  1.25   2.82     17.8   11.7     23.1
+ 6 Booker 2-cane   0.145  2009   9.67 1.42  3.56   4.98     16.9   10.4     22.4
+ 7 Booker 4-cane   0.140  2009   9.67 1.68  3.63   5.32     16.9   10.4     22.4
+ 8 Booker 2-cane   0.0489 2010   3.63 0.848 0.0125 0.861    17.5   11.3     23.3
+ 9 Booker 4-cane   0.0307 2010   3.63 0.848 0.0125 0.861    17.5   11.3     23.3
+10 Booker 2-cane   0.0324 2011   5.74 1.56  0.0782 1.64     17.6   12.1     22.5
+# … with 111 more rows, 11 more variables: rh_sev1 &lt;dbl&gt;, wetness_sev1 &lt;dbl&gt;,
+#   WD_sev1 &lt;dbl&gt;, rain_sev1 &lt;dbl&gt;, tmean_sev23 &lt;dbl&gt;, tmin_sev23 &lt;dbl&gt;,
+#   tmax_sev23 &lt;dbl&gt;, rh_sev23 &lt;dbl&gt;, wetness_sev23 &lt;dbl&gt;, WD_sev23 &lt;dbl&gt;,
+#   rain_sev23 &lt;dbl&gt;, and abbreviated variable names ¹​Severity, ²​tmean_sev1,
+#   ³​tmin_sev1, ⁴​tmax_sev1
+# ℹ Use `print(n = ...)` to see more rows, and `colnames()` to see all variable names</code></pre>
+</div>
+</div>
+</section>
+<section id="colinearity" class="level2">
+<h2 class="anchored" data-anchor-id="colinearity">Colinearity</h2>
+<div class="cell" data-hash="2_feature_analysis_cache/html/colinearity_f1b8405e3480ff2ad23cfeaf890ca0cd">
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 19 × 20
+   `0`        Sever…¹    sev1     sev2    sev3    sev23 tmean…² tmin_s…³ tmax_…⁴
+   &lt;chr&gt;        &lt;dbl&gt;   &lt;dbl&gt;    &lt;dbl&gt;   &lt;dbl&gt;    &lt;dbl&gt;   &lt;dbl&gt;    &lt;dbl&gt;   &lt;dbl&gt;
+ 1 Severity    1       0.215   0.351    0.606   0.553    0.149   1.81e-1  0.0914
+ 2 sev1        0.215   1       0.0191   0.218   0.157   -0.380  -4.38e-2 -0.446 
+ 3 sev2        0.351   0.0191  1        0.701   0.873    0.172   1.52e-1  0.172 
+ 4 sev3        0.606   0.218   0.701    1       0.960    0.115   8.84e-2  0.115 
+ 5 sev23       0.553   0.157   0.873    0.960   1        0.146   1.20e-1  0.146 
+ 6 tmean_sev1  0.149  -0.380   0.172    0.115   0.146    1       5.68e-1  0.780 
+ 7 tmin_sev1   0.181  -0.0438  0.152    0.0884  0.120    0.568   1   e+0 -0.0371
+ 8 tmax_sev1   0.0914 -0.446   0.172    0.115   0.146    0.780  -3.71e-2  1     
+ 9 rh_sev1     0.298   0.708   0.0551   0.402   0.297   -0.0372  2.08e-1 -0.226 
+10 wetness_s…  0.172   0.655   0.0147   0.0505  0.0403  -0.114  -5.28e-2 -0.108 
+11 WD_sev1     0.179   0.732   0.00575  0.0623  0.0449  -0.129   2.80e-2 -0.180 
+12 rain_sev1   0.0331  0.375   0.00621 -0.103  -0.0683  -0.104  -4.96e-2 -0.0883
+13 tmean_sev…  0.0966 -0.101  -0.0240   0.0256  0.00808  0.501   1.01e-1  0.523 
+14 tmin_sev23  0.0514  0.0313  0.0264   0.0430  0.0398   0.286   2.16e-1  0.156 
+15 tmax_sev23 -0.0990 -0.240  -0.0721  -0.138  -0.123    0.392  -3.14e-1  0.732 
+16 rh_sev23    0.380   0.347   0.528    0.775   0.738    0.0262  1.52e-1 -0.0809
+17 wetness_s…  0.159  -0.0553  0.558    0.379   0.479    0.146  -4.73e-2  0.244 
+18 WD_sev23    0.164  -0.0369  0.546    0.369   0.467    0.126   1.49e-2  0.173 
+19 rain_sev23  0.548   0.235   0.385    0.489   0.486    0.213   4.09e-4  0.309 
+# … with 11 more variables: rh_sev1 &lt;dbl&gt;, wetness_sev1 &lt;dbl&gt;, WD_sev1 &lt;dbl&gt;,
+#   rain_sev1 &lt;dbl&gt;, tmean_sev23 &lt;dbl&gt;, tmin_sev23 &lt;dbl&gt;, tmax_sev23 &lt;dbl&gt;,
+#   rh_sev23 &lt;dbl&gt;, wetness_sev23 &lt;dbl&gt;, WD_sev23 &lt;dbl&gt;, rain_sev23 &lt;dbl&gt;, and
+#   abbreviated variable names ¹​Severity, ²​tmean_sev1, ³​tmin_sev1, ⁴​tmax_sev1
+# ℹ Use `colnames()` to see all variable names</code></pre>
+</div>
+</div>
+<p>We can see evidence of colinearity in the above data. At the very least, we should probably use a combination of feature selection and regularisation. We’ll do some preliminary analysis below, although we should take the feature importance scores with a grain of salt.</p>
+<p>The mean-squared error metric will provide a model-agnostic measure of model performance. Note that we are not applying this metric to unseen data, so we should take these values with a grain of salt.</p>
+</section>
+<section id="linear-regression" class="level2">
+<h2 class="anchored" data-anchor-id="linear-regression">Linear regression</h2>
+<p>We’ll start with some regularised linear regression models.</p>
+<section id="lasso-regression." class="level3">
+<h3 class="anchored" data-anchor-id="lasso-regression.">LASSO regression.</h3>
+<div class="cell" data-hash="2_feature_analysis_cache/html/lasso_6b78bca93d4aa6d8403927296bc9bf7e">
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 19 × 2
+   `(Intercept)`       s0
+   &lt;chr&gt;            &lt;dbl&gt;
+ 1 (Intercept)   0.313   
+ 2 sev3          0.0848  
+ 3 tmean_sev23   0.0484  
+ 4 tmax_sev23    0.0354  
+ 5 sev1          0.0169  
+ 6 WD_sev23      0.0159  
+ 7 rh_sev23      0.0114  
+ 8 rh_sev1       0.00703 
+ 9 wetness_sev1  0.00691 
+10 tmin_sev1     0.00528 
+11 tmin_sev23    0.00253 
+12 tmean_sev1    0.00209 
+13 rain_sev23    0.000672
+14 rain_sev1     0.000126
+15 sev2          0       
+16 sev23         0       
+17 tmax_sev1     0       
+18 WD_sev1       0       
+19 wetness_sev23 0       </code></pre>
+</div>
+</div>
+<p>LASSO MSE.</p>
+<div class="cell" data-hash="2_feature_analysis_cache/html/lasso-mse_0aa1e7554045d76d5e9f440fe4b5851d">
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 0.008995767</code></pre>
+</div>
+</div>
+</section>
+<section id="ridge-regression" class="level3">
+<h3 class="anchored" data-anchor-id="ridge-regression">Ridge Regression</h3>
+<div class="cell" data-hash="2_feature_analysis_cache/html/ridge_c92d26d395fe9ab1d9df51cb83575cfc">
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 19 × 2
+   `(Intercept)`         s0
+   &lt;chr&gt;              &lt;dbl&gt;
+ 1 (Intercept)   0.120     
+ 2 sev3          0.0536    
+ 3 sev2          0.0258    
+ 4 tmean_sev23   0.0242    
+ 5 sev23         0.0206    
+ 6 tmin_sev1     0.0192    
+ 7 tmax_sev23    0.0147    
+ 8 tmean_sev1    0.0124    
+ 9 WD_sev23      0.0121    
+10 sev1          0.0116    
+11 rh_sev23      0.00632   
+12 wetness_sev1  0.00526   
+13 WD_sev1       0.00496   
+14 rh_sev1       0.00350   
+15 tmin_sev23    0.00140   
+16 wetness_sev23 0.000894  
+17 rain_sev23    0.000732  
+18 tmax_sev1     0.000591  
+19 rain_sev1     0.00000641</code></pre>
+</div>
+</div>
+<p>Ridge MSE.</p>
+<div class="cell" data-hash="2_feature_analysis_cache/html/ridge-mse_2818c20d9ba8c847b453f9dd2f3c2012">
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 0.009313319</code></pre>
+</div>
+</div>
+</section>
+</section>
+<section id="non-gaussian-models" class="level2">
+<h2 class="anchored" data-anchor-id="non-gaussian-models">Non-Gaussian Models</h2>
+<p>The support of the response should really be [0, 1]. So, a Gaussian GLM doesn’t make much sense as the support is unbounded. To constrain the support of the response, we can instead use a GLM with something like:</p>
+<ul>
+<li>The beta distribution.</li>
+<li>The logit-normal</li>
+<li>A truncated Gaussian.</li>
+</ul>
+<p>However, the first two distributions above have a support of (0, 1), and we happen to have four Severity values of zero. So, we need to use a zero-inflated beta distribution to handle those zeroes. This gives us a support of [0, 1). Note also that the beta distribution has no analytical solution to calculating standard errors or confidence intervals, so we need to use a simulation-based approach to produce those values (e.g bootstrapping or Bayesian methods).</p>
+<p>We’ll go with the Bayesian approach using brms, as this will allow us to fit relatively more flexible models. For the purposes of feature selection, we’ll add sparsity-inducing horseshoe priors to our model.</p>
+<section id="horseshoe-model" class="level3">
+<h3 class="anchored" data-anchor-id="horseshoe-model">Horseshoe Model</h3>
+<div class="cell" data-hash="2_feature_analysis_cache/html/horseshoe_ffa355da79268721d89a7e7ab294a35a">
+<div class="cell-output cell-output-stdout">
+<pre><code>Running MCMC with 4 parallel chains, with 3 thread(s) per chain...
+
+Chain 3 finished in 17.4 seconds.
+Chain 1 finished in 17.7 seconds.
+Chain 4 finished in 17.8 seconds.
+Chain 2 finished in 21.9 seconds.
+
+All 4 chains finished successfully.
+Mean chain execution time: 18.7 seconds.
+Total execution time: 22.0 seconds.</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 21 × 5
+   `0`           Estimate Est.Error     Q2.5   Q97.5
+   &lt;chr&gt;            &lt;dbl&gt;     &lt;dbl&gt;    &lt;dbl&gt;   &lt;dbl&gt;
+ 1 zi_Intercept    3.26      0.471  -4.32    -2.44  
+ 2 Intercept       2.91      2.48   -7.59     2.83  
+ 3 phi_Intercept   2.29      0.165   1.96     2.61  
+ 4 sev3            0.417     0.195  -0.00587  0.757 
+ 5 sev23           0.0431    0.112  -0.0736   0.376 
+ 6 tmin_sev1       0.0321    0.0620 -0.0274   0.209 
+ 7 WD_sev23        0.0320    0.0703 -0.234    0.0462
+ 8 tmean_sev23     0.0206    0.0708 -0.0410   0.210 
+ 9 wetness_sev23   0.0205    0.0230 -0.0702   0.0130
+10 rh_sev23        0.0160    0.0303 -0.105    0.0197
+# … with 11 more rows
+# ℹ Use `print(n = ...)` to see more rows</code></pre>
+</div>
+</div>
+<p>Horseshoe MSE.</p>
+<div class="cell" data-hash="2_feature_analysis_cache/html/horseshoe-mse_709d19fc57126d655833d8a962a84e61">
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 0.009313086</code></pre>
+</div>
+</div>
+</section>
+<section id="multi-level-horseshoe-model" class="level3">
+<h3 class="anchored" data-anchor-id="multi-level-horseshoe-model">Multi-level Horseshoe Model</h3>
+<p>We’ll repeat the model above, but this time with the Year, Site, and Pruning status included.</p>
+<div class="cell" data-hash="2_feature_analysis_cache/html/horseshoe-multilevel_b05675a417bb4f8b7af3c50a477ca66c">
+<div class="cell-output cell-output-stdout">
+<pre><code>Running MCMC with 4 parallel chains, with 3 thread(s) per chain...
+
+Chain 1 finished in 39.4 seconds.
+Chain 2 finished in 47.5 seconds.
+Chain 3 finished in 53.7 seconds.
+Chain 4 finished in 55.2 seconds.
+
+All 4 chains finished successfully.
+Mean chain execution time: 49.0 seconds.
+Total execution time: 55.3 seconds.</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 23 × 5
+   `0`           Estimate Est.Error    Q2.5      Q97.5
+   &lt;chr&gt;            &lt;dbl&gt;     &lt;dbl&gt;   &lt;dbl&gt;      &lt;dbl&gt;
+ 1 phi_Intercept   3.40      0.191   3.01    3.76     
+ 2 zi_Intercept    3.26      0.472  -4.27   -2.44     
+ 3 Intercept       2.77      4.47   -5.68   11.6      
+ 4 sev23           0.619     0.192   0.0148  0.917    
+ 5 pruning4Mcane   0.150     0.164  -0.519   0.0213   
+ 6 rh_sev23        0.103     0.0582 -0.219   0.0000375
+ 7 pruning3Mcane   0.0693    0.280  -0.140   1.01     
+ 8 sev3            0.0610    0.192  -0.0983  0.739    
+ 9 WD_sev23        0.0307    0.0831 -0.290   0.0593   
+10 tmax_sev1       0.0160    0.0676 -0.0870  0.208    
+# … with 13 more rows
+# ℹ Use `print(n = ...)` to see more rows</code></pre>
+</div>
+</div>
+<div class="cell" data-hash="2_feature_analysis_cache/html/horseshoe-multilevel-mse_bb1df92d6dda7524f519e84ac5ce7205">
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 0.002055179</code></pre>
+</div>
+</div>
+</section>
+</section>
+<section id="non-linear-modelling" class="level2">
+<h2 class="anchored" data-anchor-id="non-linear-modelling">Non-Linear Modelling</h2>
+<p>The above models were all linear in nature. We can contrast them with more flexible non-linear models.</p>
+<section id="random-forest" class="level3">
+<h3 class="anchored" data-anchor-id="random-forest">Random Forest</h3>
+<p>We’re interested in fitting a random forest model to evalute informative features (using the node purity metric).</p>
+<div class="cell" data-hash="2_feature_analysis_cache/html/rf_855217fd57a64d8a07bea990771ea02b">
+<div class="cell-output cell-output-stdout">
+<pre><code>0.04172613 0.05 
+-0.02829383 0.05 </code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 0.01035664</code></pre>
+</div>
+</div>
+<div class="cell" data-hash="2_feature_analysis_cache/html/rf-cv_ecfadbf882d33747558bdb5adf21d587">
+<div class="cell-output-display">
+<p><img src="2_feature_analysis_files/figure-html/rf-cv-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<div class="cell" data-hash="2_feature_analysis_cache/html/rf-var_9042f7568d03d4c2298ba72749039838">
+<div class="cell-output-display">
+<p><img src="2_feature_analysis_files/figure-html/rf-var-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+</section>
+<section id="boosting-models" class="level3">
+<h3 class="anchored" data-anchor-id="boosting-models">Boosting Models</h3>
+<p>We can accomplish something similar to the random forest method using gradient boosting.</p>
+<div class="cell" data-hash="2_feature_analysis_cache/html/boost_81be066f06a19f33b94f3993a3e9fe6a">
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 0.000947585</code></pre>
+</div>
+</div>
+<p>Unsurprisingly, the model fits well to the data. But we aren’t using a holdout set, so this is to be expected.</p>
+<div class="cell" data-hash="2_feature_analysis_cache/html/boost-var_93dbbde6afd72505d992cba438650979">
+<div class="cell-output-display">
+<p><img src="2_feature_analysis_files/figure-html/boost-var-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+</section>
+</section>
+<section id="notes" class="level2">
+<h2 class="anchored" data-anchor-id="notes">Notes</h2>
+<p>We can see that some features are relatively informative (particularly features associated with sev2 and sev3), and that it makes sense to use a hierachical model (or at the very least, to incorporate spatial and temporal information).</p>
+<p>Beyond that, some form of feature pruning/selection is most likely required - based on the results of the linear sparsity-inducing methods (the LASSO and Horseshoe models).</p>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const clipboard = new window.ClipboardJS('.code-copy-button', {
+    target: function(trigger) {
+      return trigger.previousElementSibling;
+    }
+  });
+  clipboard.on('success', function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  });
+  function tippyHover(el, contentFn) {
+    const config = {
+      allowHTML: true,
+      content: contentFn,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start'
+    };
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      return note.innerHTML;
+    });
+  }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+</body></html>

@@ -1,0 +1,108 @@
+---
+title: "1_eda"
+format: html
+editor: visual
+---
+
+## Exploratory Data Analysis
+
+Imports
+
+```{r load-data, include = TRUE, echo = FALSE, message = FALSE, warning = FALSE, cache = TRUE}
+
+library(here)
+BASE_DIR <- here("R")
+source(file.path(BASE_DIR, "_imports.R"))
+```
+
+Load data
+
+```{r df, include = TRUE, echo = FALSE, message = FALSE, warning = FALSE, cache = TRUE}
+df <- read_sb_data(INPUT_DATA)
+df
+```
+
+```{r df-sum, include = TRUE, echo = FALSE, message = FALSE, warning = FALSE, cache = TRUE}
+
+df %>%
+  summary()
+```
+
+## Severity by Site
+
+```{r df-site1, include = TRUE, echo = FALSE, message = FALSE, warning = FALSE, cache = TRUE}
+
+df |>
+  ggplot() + 
+  geom_point(aes(x = sev1, y = Severity), na.rm = T) +
+  facet_wrap(~ Site, ncol = 2, scales = "free")  
+```
+
+```{r df-site2, include = TRUE, echo = FALSE, message = FALSE, warning = FALSE, cache = TRUE}
+df |>
+  ggplot() + 
+  geom_point(aes(x = sev2, y = Severity), na.rm = T) +
+  facet_wrap(~ Site, ncol = 2, scales = "free")  
+```
+
+```{r df-site3, include = TRUE, echo = FALSE, message = FALSE, warning = FALSE, cache = TRUE}
+df |>
+  ggplot() + 
+  geom_point(aes(x = sev3, y = Severity), na.rm = T) +
+  facet_wrap(~ Site, ncol = 2, scales = "free") 
+```
+
+## Severity by Year
+
+```{r df-year1, include = TRUE, echo = FALSE, message = FALSE, warning = FALSE, cache = TRUE}
+df |>
+  filter(year %in% 2005:2010) %>%
+  ggplot() + 
+  geom_point(aes(x = sev1, y = Severity), na.rm = T) +
+  facet_wrap(~ year, ncol = 2, scales = "free") 
+```
+
+```{r df-year2, include = TRUE, echo = FALSE, message = FALSE, warning = FALSE, cache = TRUE}
+df |>
+  filter(year %in% 2005:2010) %>%
+  ggplot() + 
+  geom_point(aes(x = sev2, y = Severity), na.rm = T) +
+  facet_wrap(~ year, ncol = 2, scales = "free") 
+```
+
+```{r df-year3, include = TRUE, echo = FALSE, message = FALSE, warning = FALSE, cache = TRUE}
+df |>
+  filter(year %in% 2005:2010) %>%
+  ggplot() + 
+  geom_point(aes(x = sev3, y = Severity), na.rm = T) +
+  facet_wrap(~ year, ncol = 2, scales = "free") 
+```
+
+## Severity by Pruning
+
+```{r df-prune1, include = TRUE, echo = FALSE, message = FALSE, warning = FALSE, cache = TRUE}
+df |>
+  ggplot() + 
+  geom_point(aes(x = sev1, y = Severity), na.rm = T) +
+  facet_wrap(~ pruning, ncol = 2, scales = "free") 
+```
+
+```{r df-prune2, include = TRUE, echo = FALSE, message = FALSE, warning = FALSE, cache = TRUE}
+df |>
+  ggplot() + 
+  geom_point(aes(x = sev2, y = Severity), na.rm = T) +
+  facet_wrap(~ pruning, ncol = 2, scales = "free") 
+```
+
+```{r df-prune3, include = TRUE, echo = FALSE, message = FALSE, warning = FALSE, cache = TRUE}
+df |>
+  ggplot() + 
+  geom_point(aes(x = sev3, y = Severity), na.rm = T) +
+  facet_wrap(~ pruning, ncol = 2, scales = "free") 
+```
+
+## Notes
+
+We can see that there is spatiotemporal variation in the data, and also variation by pruning.
+
+## 

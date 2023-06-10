@@ -1,0 +1,274 @@
+---
+title: "2_feature_analysis"
+format: html
+editor: visual
+---
+
+## Feature Analysis
+
+Imports
+
+```{r load-data, include = TRUE, echo = FALSE, message = FALSE, warning = FALSE, cache = TRUE}
+
+library(here)
+BASE_DIR <- here("R")
+source(file.path(BASE_DIR, "_imports.R"))
+df <- read_sb_data(INPUT_DATA)
+df
+```
+
+## Colinearity
+
+```{r colinearity, include = TRUE, echo = FALSE, message = FALSE, warning = FALSE, cache = TRUE}
+df %>%
+  select(-c(Site, pruning, year)) %>%
+  drop_na() %>%
+  cor() %>%
+  as_tibble(rownames = "0")
+```
+
+We can see evidence of colinearity in the above data. At the very least, we should probably use a combination of feature selection and regularisation. We'll do some preliminary analysis below, although we should take the feature importance scores with a grain of salt.
+
+The mean-squared error metric will provide a model-agnostic measure of model performance. Note that we are not applying this metric to unseen data, so we should take these values with a grain of salt.
+
+## Linear regression
+
+We'll start with some regularised linear regression models.
+
+### LASSO regression.
+
+```{r lasso, include = TRUE, echo = FALSE, message = FALSE, warning = FALSE, cache = TRUE}
+
+X <- df %>%
+  select(-c(Site, pruning, Severity, year)) %>%
+  makeX(na.impute = T)
+
+y <- df %>%
+  pluck("Severity") %>%
+  as.matrix()
+
+# Leave-one-out CV
+cv_lasso_model <- cv.glmnet(X, y, alpha = 1, type.measure = "mse", nfolds = nrow(X), relax = F)
+lasso_model <- glmnet(X, y, alpha = 1, lambda = cv_lasso_model$lambda.min)
+coef(lasso_model) %>%
+  as.matrix() %>%
+  as_tibble(rownames = "(Intercept)") %>%
+  mutate(s0 = abs(s0)) %>%
+  arrange(-s0) 
+```
+
+LASSO MSE.
+
+```{r lasso-mse, include = TRUE, echo = FALSE, message = FALSE, warning = FALSE, cache = TRUE}
+
+predict(lasso_model, newx = X) %>%
+  mse(y)
+```
+
+### Ridge Regression
+
+```{r ridge, include = TRUE, echo = FALSE, message = FALSE, warning = FALSE, cache = TRUE}
+
+# Leave-one-out CV
+cv_ridge_model <- cv.glmnet(X, y, alpha = 0, type.measure = "mse", nfolds = nrow(X), relax = F)
+ridge_model <- glmnet(X, y, alpha = 0, lambda = cv_ridge_model$lambda.min)
+coef(ridge_model) %>%
+  as.matrix() %>%
+  as_tibble(rownames = "(Intercept)") %>%
+  mutate(s0 = abs(s0)) %>%
+  arrange(-s0)
+```
+
+Ridge MSE.
+
+```{r ridge-mse, include = TRUE, echo = FALSE, message = FALSE, warning = FALSE, cache = TRUE}
+
+predict(ridge_model, newx = X) %>%
+  mse(y)
+```
+
+## Non-Gaussian Models
+
+The support of the response should really be \[0, 1\]. So, a Gaussian GLM doesn't make much sense as the support is unbounded. To constrain the support of the response, we can instead use a GLM with something like:
+
+-   The beta distribution.
+-   The logit-normal
+-   A truncated Gaussian.
+
+However, the first two distributions above have a support of (0, 1), and we happen to have four Severity values of zero. So, we need to use a zero-inflated beta distribution to handle those zeroes. This gives us a support of \[0, 1). Note also that the beta distribution has no analytical solution to calculating standard errors or confidence intervals, so we need to use a simulation-based approach to produce those values (e.g bootstrapping or Bayesian methods).
+
+We'll go with the Bayesian approach using brms, as this will allow us to fit relatively more flexible models. For the purposes of feature selection, we'll add sparsity-inducing horseshoe priors to our model.
+
+### Horseshoe Model
+
+```{r horseshoe, include = TRUE, echo = FALSE, message = FALSE, warning = FALSE, cache = TRUE}
+
+df_no_factors <- X %>%
+  as_tibble() %>%
+  mutate(Severity = c(y))
+
+linear_horseshoe <- 
+ brm(
+    brmsformula(
+      Severity ~ .,
+      phi ~ 1,
+      zi ~ 1
+    ),
+    family = zero_inflated_beta(),
+    data = df_no_factors,
+    prior = c(
+      set_prior("horseshoe(1)", class = "b")
+    ),
+    thin = 1,
+    cores = N_CORES,
+    seed = SEED,
+    algorithm = SAMPLING_ALGORITHM,
+    iter = STAN_ITER,
+    init = STAN_INIT_START,
+    warmup = STAN_WARMUP,
+    silent = 1,
+    refresh = 0,
+    sample_prior = STAN_SAMPLE_PRIOR,
+    chains = N_CHAINS,
+    backend = STAN_BACKEND,
+    threads = threading(WITHIN_CHAIN_THREADS),
+    save_pars = save_pars(all = T),
+    control = list(adapt_delta = 0.9),
+    file_refit = FILE_REFIT
+  )
+
+fixef(linear_horseshoe) %>%
+  as_tibble(rownames = "0") %>%
+  mutate(Estimate = abs(Estimate)) %>%
+  arrange(-Estimate)
+```
+
+Horseshoe MSE.
+
+```{r horseshoe-mse, include = TRUE, echo = FALSE, message = FALSE, warning = FALSE, cache = TRUE}
+
+posterior_predict(linear_horseshoe, newx = df_no_factors) %>%
+  colMeans() %>%
+  mse(y)
+```
+
+### Multi-level Horseshoe Model
+
+We'll repeat the model above, but this time with the Year, Site, and Pruning status included.
+
+```{r horseshoe-multilevel, include = TRUE, echo = FALSE, message = FALSE, warning = FALSE, cache = TRUE}
+
+
+df_with_factors <- df_no_factors %>%
+  mutate(
+    Site = df$Site, 
+    pruning = df$pruning, 
+    year = df$year
+  )
+
+multi_level_formula <- df_no_factors %>% 
+  select(-Severity) %>% 
+  colnames() %>% 
+  paste0(collapse = "+") %>%
+  str_c("Severity ~ ", ., " + (1 | Site) + (1 | year) + pruning")
+
+linear_multi_level_horseshoe <- 
+ brm(
+    brmsformula(
+      multi_level_formula,
+      phi ~ 1,
+      zi ~ 1
+    ),
+    family = zero_inflated_beta(),
+    data = df_with_factors,
+    prior = c(
+      set_prior("horseshoe(1)", class = "b")
+    ),
+    thin = 1,
+    cores = N_CORES,
+    seed = SEED,
+    algorithm = SAMPLING_ALGORITHM,
+    iter = STAN_ITER,
+    init = STAN_INIT_START,
+    silent = 1,
+    refresh = 0,
+    warmup = STAN_WARMUP,
+    sample_prior = STAN_SAMPLE_PRIOR,
+    chains = N_CHAINS,
+    backend = STAN_BACKEND,
+    threads = threading(WITHIN_CHAIN_THREADS),
+    save_pars = save_pars(all = T),
+    control = list(adapt_delta = 0.9),
+    file_refit = FILE_REFIT
+  )
+
+fixef(linear_multi_level_horseshoe) %>%
+  as_tibble(rownames = "0") %>%
+  mutate(Estimate = abs(Estimate)) %>%
+  arrange(-Estimate)
+```
+
+```{r horseshoe-multilevel-mse, include = TRUE, echo = FALSE, message = FALSE, warning = FALSE, cache = TRUE}
+
+posterior_predict(linear_multi_level_horseshoe, newx = df_with_factors) %>%
+  colMeans() %>%
+  mse(y)
+```
+
+## Non-Linear Modelling
+
+The above models were all linear in nature. We can contrast them with more flexible non-linear models.
+
+### Random Forest
+
+We're interested in fitting a random forest model to evalute informative features (using the node purity metric).
+
+```{r rf, include = TRUE, echo = FALSE, message = FALSE, warning = FALSE, cache = TRUE}
+
+tuned_rf_model <- df_with_factors %>%
+  select(-Severity) %>%
+  tuneRF(
+    df_with_factors$Severity, doBest = T, 
+    trace = F, plot = F, improve = 0.05, ntreeTry = 2000
+  )
+
+predict(tuned_rf_model) %>%
+  mse(y)
+```
+
+```{r rf-cv, include = TRUE, echo = FALSE, message = FALSE, warning = FALSE, cache = TRUE}
+
+rf_cv_model <- rfcv(df_with_factors, df_with_factors$Severity, cv.fold = nrow(X))
+with(rf_cv_model, plot(n.var, error.cv, log = "x", type = "o", lwd = 2))
+```
+
+```{r rf-var, include = TRUE, echo = FALSE, message = FALSE, warning = FALSE, cache = TRUE}
+
+varImpPlot(tuned_rf_model)
+```
+
+### Boosting Models
+
+We can accomplish something similar to the random forest method using gradient boosting.
+
+```{r boost, include = TRUE, echo = FALSE, message = FALSE, warning = FALSE, cache = TRUE}
+
+boosted_model <- mboost(Severity ~ ., df_with_factors, control = boost_control(mstop = 1000))
+boosted_model %>% 
+  predict() %>%
+  mse(y)
+```
+
+Unsurprisingly, the model fits well to the data. But we aren't using a holdout set, so this is to be expected.
+
+```{r boost-var, include = TRUE, echo = FALSE, message = FALSE, warning = FALSE, cache = TRUE}
+
+mboost::varimp(boosted_model) %>%
+  plot()
+```
+
+## Notes
+
+We can see that some features are relatively informative (particularly features associated with sev2 and sev3), and that it makes sense to use a hierachical model (or at the very least, to incorporate spatial and temporal information).
+
+Beyond that, some form of feature pruning/selection is most likely required - based on the results of the linear sparsity-inducing methods (the LASSO and Horseshoe models).
