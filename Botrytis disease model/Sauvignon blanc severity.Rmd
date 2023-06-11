@@ -1,0 +1,210 @@
+---
+title: "Sauvignon blanc Severity"
+author: "Yao Liu"
+date: "23/05/2023"
+output:
+  word_document: default
+---
+
+```{r, warning=FALSE, echo=FALSE, tidy=TRUE, error=FALSE, message=FALSE}
+ rm(list = ls())
+    {
+    library(plyr)
+    l_ply(list('tidyverse','readxl','ggplot2','readr','tidyr','dplyr','dbplyr','purrr','broom','ggthemes','plotly','RcppRoll','MASS',
+               'caret','ggpubr','compare','gtable','grid','viridis','reshape2','cowplot','lubridate', 'RColorBrewer', 'datacheck',
+               'openair','knitr','zoo','SciViews','data.table', 'janitor','RSQLite','ggthemes'),
+          require, character.only = T)
+    # tidyverse_update(recursive = FALSE) 
+    #get the current working directory
+    MainDir <- list(PROJHOME = normalizePath(getwd()))
+    # Input and output directory data file location
+    InputData = file.path(MainDir, 'InputData')
+    MeteoData = file.path(MainDir, 'MeteoData')
+    ApsimData = file.path(MainDir, 'ApsimData')
+    # Input and output directory data file location
+    OutputData = file.path(MainDir, 'OutputData')
+    # figure output directory, mainly the the place for paper writing 
+    FigureOutput = file.path(MainDir, 'Figures')
+    
+    CustomizedFunctions = file.path(MainDir,'Functions')
+    #IntermediateResults = file.path(MainDir, 'Intermediate results')  
+    #SupportingFunctions = file.path(MainDir, 'Supporting functions')
+    # Load all functions
+    source(file.path(CustomizedFunctions,'Abundance_conidia.R'))
+    source(file.path(CustomizedFunctions,'Calculate_DAWS.R'))
+    source(file.path(CustomizedFunctions,'Compare_BBCH_DAWS.R'))
+    source(file.path(CustomizedFunctions,'General_functions.R'))
+    source(file.path(CustomizedFunctions,'Create_New_Managements.R'))
+
+    } 
+```
+
+# load meteodata
+```{r,warning=FALSE, echo=FALSE, error=FALSE}
+Meteo_paths <- list.files(MeteoData, pattern = "*.csv", full.names = TRUE)
+
+climate.daily.data <- data.frame()
+
+for (Meteo_path in Meteo_paths) {
+
+  Meteo_name <- basename(Meteo_path)
+ 
+  Meteo_parts <- str_split(Meteo_name, "_")[[1]]
+  site <- Meteo_parts[1]
+  variety <- Meteo_parts[2]
+  
+  excel_data <- read.csv(Meteo_path)
+  
+  excel_data$Site <- site
+  excel_data$Variety <- variety
+  
+  climate.daily.data <- bind_rows(climate.daily.data, excel_data)
+}
+
+
+```
+
+
+## Calculate CISO
+
+```{r, warning=FALSE, echo=FALSE, error=FALSE, message=FALSE}
+## Calculate the relative abundance of conidia on sources (7-day period)
+
+Cal_daily <- climate.daily.data
+#Cal_daily$RH =  Cal_daily$RH/100 
+Tmin_spor = 0
+Tmin_mygr = 0
+Tmax_spor = 35
+Tmax_mygr = 40 
+
+CISO =  data.frame()
+
+for (id in 1 : max(seq_len(nrow(Cal_daily)))) {
+#for(id in 1:nrow(Cal_daily)) {
+  Temp_CISO = Cal_daily[id,]
+  
+  Temp_CISO$Teq = Cal_Teq(Temp_CISO$Tmean, Temp_CISO$Tmin, Temp_CISO$Tmax)
+  Temp_CISO$Teq_spor = Cal_Teq(Temp_CISO$Tmean, Tmin_spor, Tmax_spor)
+  Temp_CISO$Teq_mygr = Cal_Teq(Temp_CISO$Tmean, Tmin_mygr, Tmax_mygr)
+  
+  if (all(!is.na(Temp_CISO[c("RH", "Rain")])) && (Temp_CISO$RH >= 90 | Temp_CISO$Rain >= 0.2)) {
+    Temp_CISO$Mf = Temp_CISO$WD/24.0
+  } else {
+    Temp_CISO$Mf = 0
+  } 
+  
+  Temp_CISO$MYGR = Cal_MYGR(Temp_CISO$Teq_mygr, Temp_CISO$Mf)
+  Temp_CISO$SPOR = Cal_SPOR(Temp_CISO$Teq_spor, Temp_CISO$RH)
+
+  CISO =  bind_rows(CISO,Temp_CISO)
+  
+}
+
+CISO$CISO = Cal_CISO(CISO$MYGR, CISO$SPOR)
+
+Date_pre <- CISO %>%
+#    mutate(year = year(date), doy= doy) %>% 
+    do(DOY.from.July1st(.))
+
+```
+
+## Determine BBCH stage by using Grapevine.Phenology.Stage in APSIM file
+
+```{r APISIM, warning=FALSE, echo=FALSE, error=FALSE, message=FALSE}
+Apsim_list <- list.files(path = ApsimData, pattern = ".*Sauvignon blanc.*\\.xlsx$", full.names = TRUE)
+
+report_Code_BBCH = data.frame()
+
+for (Apsim_path in Apsim_list) {
+  Apsim_name <- basename(Apsim_path)
+  Apsim_name <- gsub(".xlsx", "", Apsim_name)
+  Apsim_parts <- strsplit(Apsim_name, "_")[[1]]
+  site <- Apsim_parts[1]
+  variety <- Apsim_parts[2]
+  
+  report_data <- read_excel(Apsim_path, sheet = "Report")
+  temp_BBCH <- Match_BBCH_APSIM(report_data)
+  
+  temp_BBCH$Site <- site
+  temp_BBCH$Variety <- variety
+  report_Code_BBCH <- rbind(report_Code_BBCH, temp_BBCH)
+
+}
+
+GS_data = data.frame()
+
+for (idc in 1:nrow(Date_pre)) {
+  Gs_CISO = Date_pre[idc,]
+  Gs_CISO$GS = Compare_BBCH_DAWS(Gs_CISO,report_Code_BBCH)
+  GS_data = bind_rows(GS_data,Gs_CISO)
+}  
+
+```
+
+# calculate RISK
+
+```{r, warning=FALSE, echo=FALSE, error=FALSE, message=FALSE}
+
+# The model calculations begin when grape inflorescences are clearly visible and ends when berries are ripe for harvest, with a time step of 1 day.
+Risk_data = data.frame()
+
+for (idr in 1:nrow(GS_data)) {
+  Temp_Risk = GS_data[idr,]
+  Temp_Risk$RIS1 = NA
+  Temp_Risk$RIS2 = NA
+  Temp_Risk$RIS3 = NA
+  Temp_Risk$SUS1 = NA
+  Temp_Risk$SUS2 = NA
+  Temp_Risk$SUS3 = NA
+  Temp_Risk$INF1 = NA
+  Temp_Risk$INF2 = NA
+  Temp_Risk$INF3 = NA
+
+  if (!is.na(Temp_Risk$GS) & Temp_Risk$GS >= 53 & Temp_Risk$GS <= 73) {
+    ## in the first infection window(stage 53-73),calculate an infection rate on inflorescences and young clusters
+    Temp_Risk$SUS1 = Cal_RIS1(Temp_Risk$CISO, Temp_Risk$Teq, Temp_Risk$WD, Temp_Risk$GS)[[1]]
+    Temp_Risk$INF1 = Cal_RIS1(Temp_Risk$CISO, Temp_Risk$Teq, Temp_Risk$WD, Temp_Risk$GS)[[2]]
+    Temp_Risk$RIS1 = Cal_RIS1(Temp_Risk$CISO, Temp_Risk$Teq, Temp_Risk$WD, Temp_Risk$GS)[[3]]
+
+  } 
+  
+  if (!is.na(Temp_Risk$GS) & Temp_Risk$GS >= 79 & Temp_Risk$GS <= 89) {
+    
+    # (stage 79-89) in the second infection window,calculate two infection rates on ripening berries: one for conidial infection(INF2) and another for berry-to-berry infection(INF3)
+    # Infection rate for conidia infection:
+    Temp_Risk$SUS2 = Cal_RIS2(Temp_Risk$CISO, Temp_Risk$Teq, Temp_Risk$WD, Temp_Risk$GS)[[1]]
+    Temp_Risk$INF2 = Cal_RIS2(Temp_Risk$CISO, Temp_Risk$Teq, Temp_Risk$WD, Temp_Risk$GS)[[2]]
+    Temp_Risk$RIS2 = Cal_RIS2(Temp_Risk$CISO, Temp_Risk$Teq, Temp_Risk$WD, Temp_Risk$GS)[[3]]
+
+     ## Infection rate for berry-to-berry infection:
+    Temp_Risk$SUS3 = Cal_RIS3(Temp_Risk$MYGR, Temp_Risk$Teq, Temp_Risk$RH, Temp_Risk$GS)[[1]]
+    Temp_Risk$INF3 = Cal_RIS3(Temp_Risk$MYGR, Temp_Risk$Teq, Temp_Risk$RH, Temp_Risk$GS)[[2]]
+    Temp_Risk$RIS3 = Cal_RIS3(Temp_Risk$MYGR, Temp_Risk$Teq, Temp_Risk$RH, Temp_Risk$GS)[[3]]
+
+  } 
+  
+  Risk_data = bind_rows(Risk_data,Temp_Risk)
+  
+}
+```
+
+## Calculate accumulated severity
+
+```{r, warning=FALSE, echo=FALSE, error=FALSE, message=FALSE}
+
+SEV_data <-  Risk_data %>%
+    mutate_at(vars(c('RIS1','RIS2','RIS3')),funs(replace(.,is.na(.),0))) %>%
+    group_by(season) %>%
+    mutate(
+           SEV1 = cumsum(RIS1),
+           SEV2 = cumsum(RIS2),
+           SEV3 = cumsum(RIS3),
+           SEV23 = cumsum(RIS2+RIS3)
+  )
+SEV_data$date =as.Date(parse_date_time( paste(SEV_data$year, SEV_data$doy), orders = "yj"))
+#SEV_data$variety = current.subject
+#SEV_data$site = "Villa" 
+
+#write_csv(SEV_data,file.path(OutputData, paste(unique(SEV_data$Variety), '.csv',sep = '')))
+
+```
