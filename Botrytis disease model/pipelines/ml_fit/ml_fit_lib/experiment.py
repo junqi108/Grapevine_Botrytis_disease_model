@@ -12,8 +12,12 @@ A library for performing experiments within the machine learning pipeline.
 import mlflow
 from pycaret.regression import (
     setup, create_model, compare_models, tune_model, finalize_model,
-    ensemble_model, blend_models, stack_models, automl
+    ensemble_model, blend_models, stack_models, automl, predict_model,
+    interpret_model, get_config
 )
+
+from mapie.regression import MapieRegressor
+from mapie.metrics import regression_coverage_score
 
 ##########################################################################################################
 ### Library  
@@ -65,7 +69,7 @@ def save_model(final_model, config):
         client = mlflow.tracking.MlflowClient()
         client.update_model_version(experiment_name, model_version.version, model_description)
 
-def regression_experiment(config, run_distributed):
+def regression_experiment(config, run_distributed, tmp_dir):
     evaluation_metric = config.get("target_metric")
     search_algorithm, search_library = get_search_config(config, run_distributed)
     n_iter = config.get("n_iter")
@@ -105,6 +109,29 @@ def regression_experiment(config, run_distributed):
         )
     
     best_model = automl(optimize = evaluation_metric, use_holdout = False, turbo = True)   
+
+    for plot in ["summary", "correlation", "reason", "pdp", "msa"]:
+        interpret_model(best_model, plot = plot, save = tmp_dir)
+        mlflow.log_artifacts(tmp_dir)
+
     final_model = finalize_model(best_model)
     save_model(final_model, config)
     return final_model
+
+def get_prediction_intervals(model, data, config):
+    df = data.drop(columns = config.get("ignore_features"))
+    target = config.get("target")
+    X = df.drop(columns = target)
+    y = df[target]
+
+    mapie_model = MapieRegressor(model, method = "minmax", cv = config.get("fold"))
+    mapie_model.fit(X, y)
+
+    preds, intervals = mapie_model.predict(X, alpha = config.get("prediction_interval"))
+    lb = intervals[:, 0, 0].ravel()
+    ub = intervals[:, 1, 0].ravel()
+    return preds, lb, ub
+
+def reg_predict_model(model, df):
+    preds = predict_model(model, data = df)
+    return preds["prediction_label"].values

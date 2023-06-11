@@ -208,6 +208,7 @@ dependencies:
       - logical-unification==0.4.6
       - m2cgen==0.10.0
       - mako==1.2.4
+      - mapie==0.6.4
       - markdown==3.4.3
       - markdown-it-py==2.2.0
       - markupsafe==2.1.3

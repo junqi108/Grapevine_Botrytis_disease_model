@@ -37,6 +37,8 @@ distributed_search_library: tune-sklearn
 early_stopping: asha
 early_stopping_max_iters: 10
 
+prediction_interval: 0.05
+
 model_description: Regression model for Botrytis disease modelling.
 author: default user
 
