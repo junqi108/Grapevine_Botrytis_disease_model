@@ -1,0 +1,5 @@
+name: clustering
+
+entry_points:
+  main:
+    command: python run.py  

@@ -12,13 +12,13 @@ normalize: true
 normalize_method: zscore
 data_split_shuffle: true
 fold_strategy: kfold
-fold: 2
+fold: 3
 fold_shuffle: true
 fold_groups: Site
 n_jobs: -1
 use_gpu: false
 random_seed: 100
-log_experiment: false
+log_experiment: true
 log_plots: true
 log_profile: true
 log_data: true
@@ -28,8 +28,8 @@ data_split_stratify: false
 #   - Site
 
 run_distributed: false
-n_iter: 2
-n_estimators: 2
+n_iter: 3
+n_estimators: 5
 search_algorithm: random
 distributed_search_algorithm: optuna
 search_library: scikit-learn 
@@ -66,3 +66,10 @@ ignore_features:
   - doy.july1st
   - previous.season
   - season
+
+anomaly_model: iforest
+contamination_fraction: 0.05
+
+clustering_model: kmeans
+num_clusters: 7
+clustering_ground_truth: Site
