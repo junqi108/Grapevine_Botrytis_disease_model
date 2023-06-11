@@ -1,0 +1,66 @@
+target: Severity
+target_metric: MSE
+n_select: 10
+turbo: true
+train_size: 0.7
+preprocess: true
+imputation_type: simple
+numeric_imputation: knn
+iterative_imputation_iters: 5
+low_variance_threshold: 0
+normalize: true
+normalize_method: zscore
+data_split_shuffle: true
+fold_strategy: kfold
+fold: 2
+fold_shuffle: true
+fold_groups: Site
+n_jobs: -1
+use_gpu: false
+random_seed: 100
+log_experiment: false
+log_plots: true
+log_profile: true
+log_data: true
+profile: true
+data_split_stratify: false
+# data_split_stratify: 
+#   - Site
+
+run_distributed: false
+n_iter: 2
+n_estimators: 2
+search_algorithm: random
+distributed_search_algorithm: optuna
+search_library: scikit-learn 
+distributed_search_library: tune-sklearn
+early_stopping: asha
+early_stopping_max_iters: 10
+
+model_description: Regression model for Botrytis disease modelling.
+author: default user
+
+ensemble_methods:
+  - boosting
+  - bagging
+  - blending
+  - stacking
+  
+meta_model: dt
+
+categorical_features:
+  - Site
+  - pruning
+  - year
+ignore_features: 
+  - Variety
+  - Date
+  - first_sev1
+  - end_sev23
+  - end_sev1
+  - first_sev23
+  - end_sev23
+  - doy
+  - doy.july1st
+  - previous.season
+  - season

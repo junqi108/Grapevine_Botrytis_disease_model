@@ -1,0 +1,5 @@
+name: ensemble_regression
+
+entry_points:
+  main:
+    command: python run.py  

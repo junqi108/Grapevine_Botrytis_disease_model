@@ -215,7 +215,7 @@ loo_model_weights(
 ```
 The varying slopes model with the variance (phi) and switching (zi) components included has the best fit according to the Pareto smoothed importance sampling leave-one-out cross validation (PSIS-LOO) procedure. Though we can ensemble all three models if needed.
 
- ## Finite Beta Mixture
+## Finite Beta Mixture
 
 Finally, we'll throw in a 2-component Beta mixture model.
 
