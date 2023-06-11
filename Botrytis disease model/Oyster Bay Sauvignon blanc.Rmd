@@ -1,0 +1,449 @@
+---
+title: "Oyster Bay Sauvignon blanc"
+author: "Yao Liu & Junqi ZHU"
+date: "04/04/2023"
+output:
+  word_document: default
+---
+# Case: Oyster Bay Sauvignon blanc
+
+```{r, warning=FALSE, echo=FALSE, tidy=TRUE, error=FALSE, message=FALSE}
+ rm(list = ls())
+    {
+    library(plyr)
+    l_ply(list('tidyverse','readxl','ggplot2','readr','tidyr','dplyr','dbplyr','purrr','broom','ggthemes','plotly','RcppRoll','MASS',
+               'caret','ggpubr','compare','gtable','grid','viridis','reshape2','cowplot','lubridate', 'RColorBrewer', 'datacheck',
+               'openair','knitr','zoo','SciViews','data.table', 'janitor','RSQLite','ggthemes'),
+          require, character.only = T)
+    # tidyverse_update(recursive = FALSE) 
+    #get the current working directory
+    MainDir <- list(PROJHOME = normalizePath(getwd()))
+    # Input and output directory data file location
+    InputData = file.path(MainDir, 'InputData')
+    # Input and output directory data file location
+    OutputData = file.path(MainDir, 'OutputData')
+    # figure output directory, mainly the the place for paper writing 
+    FigureOutput = file.path(MainDir, 'Figures')
+    
+    CustomizedFunctions = file.path(MainDir,'Functions')
+    #IntermediateResults = file.path(MainDir, 'Intermediate results')  
+    #SupportingFunctions = file.path(MainDir, 'Supporting functions')
+    # Load all functions
+    source(file.path(CustomizedFunctions,'Abundance_conidia.R'))
+    source(file.path(CustomizedFunctions,'Calculate_DAWS.R'))
+    source(file.path(CustomizedFunctions,'Compare_BBCH_DAWS.R'))
+    source(file.path(CustomizedFunctions,'General_functions.R'))
+    source(file.path(CustomizedFunctions,'Create_New_Managements.R'))
+    } 
+```
+
+```{r setup, include=FALSE}
+options(scipen=999)
+  
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE,
+                      fig.align = "center", 
+                      fig.width = 14, fig.height = 10, dpi = 300)
+#Constants
+outlier.colour = "#ff0000"
+
+```
+
+```{r,warning=FALSE, echo=FALSE, error=FALSE}
+#'Site1004_RPC', 'Site1002_OYB','Site1003_SEA','Site1001_BRA'
+current.region <- 'Site1002_OYB_Hourly'   
+current.subject <- 'Sauvignon blanc'
+
+#'Squire','Oyster Bay','Seaview', 'Booker'
+site = 'OYB'
+lastYear = '2004'
+
+input.name <- paste0(current.region, ".csv")
+output.name <- paste(current.region, current.subject, sep = '_')
+#glimpse(output.name)
+```
+
+### Load the data 
+
+```{r, warning=FALSE, echo=FALSE, error=FALSE, message=FALSE}
+climate.data.names <- c('ID','Year','Day','Hour','Tmean','RH','Wetness','Rain','T_grass','Tmin_grass',
+                        'T_soil','Tmin_soil','Radation','WindSpeed','WindDirection','PET','GDD>10','GDD1-Sep')
+  
+climate.data <- read_csv(file.path(InputData,input.name)) %>% 
+  dplyr::select(1:18) %>% 
+  slice(-c(1:7)) %>% 
+  setNames(tolower(climate.data.names)) %>% 
+#  mutate(Timestamp=as.POSIXct(timestamp,format="%d/%m/%Y %H:%M"),
+#         year=year(Timestamp),day=yday(Timestamp),hour=hour(Timestamp)) %>% 
+  mutate_all(., funs( as.numeric(as.character(.)))) %>% 
+  mutate(hour = hour/100 - 1) %>%
+  distinct(year,day,hour, .keep_all = T) %>% 
+  dplyr::filter(year>= lastYear) 
+  # filter(!(year==2020 & day<=11))
+  
+#glimpse(climate.data)
+#last(climate.data$year)
+
+```
+
+### create a complete records of days and hours
+
+```{r, warning=FALSE, echo=FALSE, error=FALSE, message=FALSE}
+
+first.day <- first(climate.data$day)
+first.year <- first(climate.data$year)
+
+last.day <- last(climate.data$day)
+last.year <- last(climate.data$year)
+
+start.date <- as.Date(first.day, origin = paste(first.year-1, 12, 31, sep = '-'))
+end.date <- as.Date(last.day, origin = paste(last.year-1, 12, 31, sep = '-'))
+
+
+#yday(end.date)
+#chour <-c(0,100,200,300,400,500,600,700,800,900,1000,1100,1200,
+#          1300,1400,1500,1600,1700,1800,1900,2000,2100,2200,2300)
+chour <-c(0,1,2,3,4,5,6,7,8,9,10,11,12,
+          13,14,15,16,17,18,19,20,21,22,23)
+
+complete.year.day <- 
+  data_frame(date = seq.Date(from = start.date,to = end.date, by = 'day')) %>% 
+  mutate(year = year(date), day.of.year = yday(date)) 
+
+complete.year.day.hour<-  data.frame(merge(complete.year.day,chour,all=TRUE))
+#data.frame(complete.year.day.hour)
+names (complete.year.day.hour) = c("date", "year", "day","hour")
+
+#glimpse(complete.year.day.hour)
+
+```
+
+### Check the missing data and replace missing value
+
+```{r, warning=FALSE, echo=FALSE, error=FALSE, message=FALSE}
+
+complete.hourly <-
+  right_join(climate.data, complete.year.day.hour, by = c('year','day', 'hour')) %>%
+  mutate_at('rh',funs(replace(., .< 0, 0))) %>%
+  mutate_at('rh',funs(replace(., .> 100, 100))) %>%
+  mutate_at('wetness',funs(replace(., .< 0, 0))) %>%
+  mutate_at('wetness',funs(replace(., .> 100, 100))) %>%  
+  mutate_if(is.numeric,funs(replace(.,is.nan(.),NA))) %>% 
+  group_by(day,hour) %>%
+  mutate_at('rh',funs(replace(.,is.na(.),mean(.,na.rm=TRUE)))) %>%
+  mutate_at('tmean',funs(replace(.,is.na(.),mean(.,na.rm=TRUE)))) %>%
+  mutate_at('rain',funs(replace(.,is.na(.),0))) %>%
+  mutate_at('rain',funs(replace(., . < 0 ,0))) %>%
+  ungroup(.) %>% 
+  drop_na(year) %>% 
+#  mutate(hour = hour/100) %>% 
+  arrange(year, day, hour)
+
+#write_csv(complete.hourly, file.path(OutputData, paste(output.name, 'hourly.csv',sep = '')))
+
+#short_summary(complete.hourly)  
+
+
+# Step 1: Set wetness < 0 to 0 and wetness > 100 to 100
+#complete.hourly$wetness[complete.hourly$wetness < 0] <- 0
+#complete.hourly$wetness[complete.hourly$wetness > 100] <- 100
+
+# Step 2: Create new variable wetnessBinary
+complete.hourly$wetnessBinary <- ifelse(complete.hourly$wetness >= 50, 1, 0)
+
+# Step 3: Calculate wetnessDuration for each day
+climate.data.daily.cal  <- complete.hourly %>%
+  group_by(year, day) %>%
+  mutate(wetnessBinary = ifelse(wetness >= 50, 1, 0),
+         wetnessDuration = ifelse(wetnessBinary == 1 & lag(wetnessBinary, default = 0) == 0, 0, cumsum(wetnessBinary)) * wetnessBinary) %>%
+  summarize(tmin = min(tmean, na.rm = TRUE),
+            tmax = max(tmean, na.rm = TRUE),
+            tmean = mean(tmean, na.rm = TRUE),
+            rh = mean(rh, na.rm = TRUE),
+            wetness = mean(wetness, na.rm = TRUE),
+            rain = sum(rain, na.rm = TRUE),
+            wetness_duration = ifelse(max(wetnessDuration, na.rm = TRUE) >= 4, max(wetnessDuration, na.rm = TRUE), 0)) %>%
+  ungroup() %>% 
+  dplyr::rename(doy = day) 
+#%>%   filter(year >=lastYear)      
+
+# Step 4: Rename columns
+colnames(climate.data.daily.cal) <- c('year','doy','Tmin','Tmax','Tmean','RH','wetness','Rain','WD')
+
+#write_csv(climate.data.daily.cal, 
+#          file.path(OutputData, paste(site,current.subject, 'meteodata.csv',sep = '_')))
+
+```
+
+## Calculate CISO
+
+```{r, warning=FALSE, echo=FALSE, error=FALSE, message=FALSE}
+## Calculate the relative abundance of conidia on sources (7-day period)
+
+Cal_daily <- climate.data.daily.cal
+#Cal_daily$RH =  Cal_daily$RH/100 
+Tmin_spor = 0
+Tmin_mygr = 0
+Tmax_spor = 35
+Tmax_mygr = 40 
+
+CISO =  data.frame()
+
+for (id in 1 : max(seq_len(nrow(Cal_daily)))) {
+#for(id in 1:nrow(Cal_daily)) {
+  Temp_CISO = Cal_daily[id,]
+  
+  Temp_CISO$Teq = Cal_Teq(Temp_CISO$Tmean, Temp_CISO$Tmin, Temp_CISO$Tmax)
+  Temp_CISO$Teq_spor = Cal_Teq(Temp_CISO$Tmean, Tmin_spor, Tmax_spor)
+  Temp_CISO$Teq_mygr = Cal_Teq(Temp_CISO$Tmean, Tmin_mygr, Tmax_mygr)
+  
+  if (all(!is.na(Temp_CISO[c("RH", "Rain")])) && (Temp_CISO$RH >= 90 | Temp_CISO$Rain >= 0.2)) {
+    Temp_CISO$Mf = Temp_CISO$WD/24.0
+  } else {
+    Temp_CISO$Mf = 0
+  } 
+  
+  Temp_CISO$MYGR = Cal_MYGR(Temp_CISO$Teq_mygr, Temp_CISO$Mf)
+  Temp_CISO$SPOR = Cal_SPOR(Temp_CISO$Teq_spor, Temp_CISO$RH)
+
+  CISO =  bind_rows(CISO,Temp_CISO)
+  
+}
+
+CISO$CISO = Cal_CISO(CISO$MYGR, CISO$SPOR)
+
+```
+
+## Determine BBCH stage by using Grapevine.Phenology.Stage in APSIM file
+
+```{r, warning=FALSE, echo=FALSE, error=FALSE, message=FALSE}
+# Determine BBCH stage by using Grapevine.Phenology.Stage in APSIM file 
+
+#Report <- read_csv(file.path(InputData,'Report0.csv')) #%>% 
+#Grapevine <- dbConnect(SQLite(),file.path(InputData, "Squire Sauvignon blanc.db"), ":memory:") #%>%
+
+
+# Get table
+#Report1 <- dbReadTable(Grapevine, "Report")
+#write_csv(Report,file.path(OutputData, "Report.csv", sep = ''))
+
+# Read the Excel file into R as a data frame
+Report <- read_excel(file.path(InputData, paste0("/","Apsim_report","/","Oyster Bay Sauvignon blanc.xlsx")), sheet = "Report")
+
+Report_Code_BBCH <- Match_BBCH_APSIM(Report)
+
+#df_BBCH <- read_excel(file.path(InputData, 'BBCH.xlsx')) 
+GS_data = data.frame()
+
+Date_pre <-
+    CISO %>%
+#    mutate(year = year(date), doy= doy) %>% 
+    do(DOY.from.July1st(.))
+  
+for (idc in 1:nrow(Date_pre)) {
+  Gs_CISO = Date_pre[idc,]
+  Gs_CISO$GS = Compare_BBCH_DAWS(Gs_CISO,Report_Code_BBCH)
+  GS_data = bind_rows(GS_data,Gs_CISO)
+}  
+
+#GS_data1 <- GS_data
+
+```
+
+# calculate RISK
+
+```{r, warning=FALSE, echo=FALSE, error=FALSE, message=FALSE}
+
+# The model calculations begin when grape inflorescences are clearly visible and ends when berries are ripe for harvest, with a time step of 1 day.
+Risk_data = data.frame()
+
+for (idr in 1:nrow(GS_data)) {
+  Temp_Risk = GS_data[idr,]
+  Temp_Risk$RIS1 = NA
+  Temp_Risk$RIS2 = NA
+  Temp_Risk$RIS3 = NA
+  Temp_Risk$SUS1 = NA
+  Temp_Risk$SUS2 = NA
+  Temp_Risk$SUS3 = NA
+  Temp_Risk$INF1 = NA
+  Temp_Risk$INF2 = NA
+  Temp_Risk$INF3 = NA
+
+  if (!is.na(Temp_Risk$GS) & Temp_Risk$GS >= 53 & Temp_Risk$GS <= 73) {
+    ## in the first infection window(stage 53-73),calculate an infection rate on inflorescences and young clusters
+    Temp_Risk$SUS1 = Cal_RIS1(Temp_Risk$CISO, Temp_Risk$Teq, Temp_Risk$WD, Temp_Risk$GS)[[1]]
+    Temp_Risk$INF1 = Cal_RIS1(Temp_Risk$CISO, Temp_Risk$Teq, Temp_Risk$WD, Temp_Risk$GS)[[2]]
+    Temp_Risk$RIS1 = Cal_RIS1(Temp_Risk$CISO, Temp_Risk$Teq, Temp_Risk$WD, Temp_Risk$GS)[[3]]
+
+  } 
+  
+  if (!is.na(Temp_Risk$GS) & Temp_Risk$GS >= 79 & Temp_Risk$GS <= 89) {
+    
+    # (stage 79-89) in the second infection window,calculate two infection rates on ripening berries: one for conidial infection(INF2) and another for berry-to-berry infection(INF3)
+    # Infection rate for conidia infection:
+    Temp_Risk$SUS2 = Cal_RIS2(Temp_Risk$CISO, Temp_Risk$Teq, Temp_Risk$WD, Temp_Risk$GS)[[1]]
+    Temp_Risk$INF2 = Cal_RIS2(Temp_Risk$CISO, Temp_Risk$Teq, Temp_Risk$WD, Temp_Risk$GS)[[2]]
+    Temp_Risk$RIS2 = Cal_RIS2(Temp_Risk$CISO, Temp_Risk$Teq, Temp_Risk$WD, Temp_Risk$GS)[[3]]
+
+     ## Infection rate for berry-to-berry infection:
+    Temp_Risk$SUS3 = Cal_RIS3(Temp_Risk$MYGR, Temp_Risk$Teq, Temp_Risk$RH, Temp_Risk$GS)[[1]]
+    Temp_Risk$INF3 = Cal_RIS3(Temp_Risk$MYGR, Temp_Risk$Teq, Temp_Risk$RH, Temp_Risk$GS)[[2]]
+    Temp_Risk$RIS3 = Cal_RIS3(Temp_Risk$MYGR, Temp_Risk$Teq, Temp_Risk$RH, Temp_Risk$GS)[[3]]
+
+  } 
+  
+  Risk_data = bind_rows(Risk_data,Temp_Risk)
+  
+}
+```
+
+## Calculate accumulated severity
+
+```{r, warning=FALSE, echo=FALSE, error=FALSE, message=FALSE}
+
+SEV_data <-  Risk_data %>%
+    mutate_at(vars(c('RIS1','RIS2','RIS3')),funs(replace(.,is.na(.),0))) %>%
+    group_by(season) %>%
+    mutate(
+           SEV1 = cumsum(RIS1),
+           SEV2 = cumsum(RIS2),
+           SEV3 = cumsum(RIS3),
+           SEV23 = cumsum(RIS2+RIS3)
+  )
+SEV_data$date =as.Date(parse_date_time( paste(SEV_data$year, SEV_data$doy), orders = "yj"))
+SEV_data$variety = current.subject
+SEV_data$site = site 
+
+write_csv(SEV_data,file.path(OutputData, paste(output.name, '.csv',sep = '')))
+
+figure_number <- 1
+```
+
+
+### Fig. `r figure_number` SPOR Plot
+
+```{r SPOR_Plot, fig.cap = "SPOR Plot.", echo = FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+
+## test plot
+plot_A = subset(SEV_data,season == "2020-2021")
+
+colors = c('#5470C6', '#91CC75', '#EE6666', '#ff7f00')  
+my_theme = theme(panel.grid = element_blank(), panel.background = element_rect(fill = NA))
+
+##05-1 plot geom_area
+A = ggplot(plot_A,aes(x = date, y = SPOR))  + 
+  geom_area(fill="Grey",position="stack") +
+  scale_x_date(limits = c(as.Date("2020-10-01"), as.Date("2021-07-01")),date_breaks = "1 month",
+               date_labels = "%b") +
+#    scale_x_date(limits = c(as.Date("2021-01-01"), as.Date("2022-12-11")),date_breaks = "1 month",
+#               date_labels = "%b") +
+  theme_economist() +
+  theme(panel.grid = element_blank(), 
+        panel.background = element_rect(fill = NA), 
+        axis.text.y = element_text(color = "black"), 
+        axis.ticks.y = element_line(color = "black"), 
+        axis.title.y = element_text(color = "black", angle = 90), 
+        axis.line.y = element_line(color = "black"), 
+        axis.line.x = element_line(color = "black"),
+        axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
+        axis.title.x = element_text(color = "red")
+  ) + 
+  ggtitle("SPOR Plot") 
+
+plot(A)
+
+figure_number = figure_number + 1
+
+```
+
+# Fig. `r figure_number` Infection severity
+
+```{r Infection severity, fig.cap = "Infection severity.", echo = FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+##05-2 plot Bar & line
+plot_B = subset(SEV_data,season == "2020-2021")
+
+colors = c('#5470C6', '#91CC75', '#EE6666', '#ff7f00')  
+#my_theme = theme(panel.grid = element_blank(), panel.background = element_rect(fill = NA))
+
+B = ggplot(plot_B, aes(x = date)) + 
+  geom_col(aes(y = RIS1, fill = "RIS1"), width = 1.5, position = position_nudge(x = -0.2)) +
+  geom_col(aes(y = RIS2, fill = "RIS2"), width = 1.5, position = position_nudge(x = -0.2)) +
+  geom_col(aes(y = RIS3, fill = "RIS3"), width = 1.5, position = position_nudge(x = -0.2)) +
+  geom_line(aes(y = SEV1, color = "SEV1"), linewidth = 1, position = position_nudge(x = -0.2)) +
+  geom_line(aes(y = SEV23, color = "SEV23"), linewidth = 0.8, position = position_nudge(x = -0.2)) +
+  scale_x_date(
+    limits = c(as.Date("2020-10-01"), as.Date("2021-07-01")),
+    date_breaks = "1 month",
+    date_labels = "%b"
+  ) +
+  scale_y_continuous(
+    name = "Infection severity (RIS)",
+    sec.axis = sec_axis(~. * 1, name = "Accumulated severity (SEV)")
+  ) +
+  scale_fill_manual(values = colors, labels = c("RIS1", "RIS2", "RIS3")) +
+  scale_color_manual(values = c("red", "black"), labels = c("SEV1", "SEV23")) +
+  theme_economist() +
+  theme(
+    panel.grid = element_blank(),
+    panel.background = element_rect(fill = NA),
+    axis.text.y = element_text(color = "black"),
+    axis.ticks.y = element_line(color = "black"),
+    axis.title.y = element_text(color = "black", angle = 90),
+    axis.title.y.right = element_text(color = "black", angle = 90),
+    axis.line.y = element_line(color = "black"),
+    axis.line.x = element_line(color = "black"),
+    axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1)
+  ) +
+  labs(
+    title = "Infection Severity",
+    fill = "RIS Categories",
+    color = "SEV Categories",
+    subtitle = unique(plot_B$season) 
+  )
+
+plot(B)
+
+
+figure_number = figure_number + 1
+
+```
+
+
+# Fig. `r figure_number` Weather change
+
+```{r Weather change,  fig.cap = "Weather change.", fig.align = 'center', out.height= "100%", out.width="100%", fig.fullwidth=FALSE, include = TRUE, echo = FALSE, message = FALSE, warning = FALSE, cache = TRUE}
+##05-4 plot line & Bar & geom_area
+plot_D = subset(SEV_data,season == "2020-2021")
+
+colors = c('#5470C6', '#91CC75', '#EE6666', '#ff7f00')  
+my_theme = theme(panel.grid = element_blank(), panel.background = element_rect(fill = NA))
+
+D = ggplot(plot_D, aes(x = date)) + 
+  geom_line(aes(y = Tmean), linewidth = 2, color = "black",position = position_nudge(x = -0.2)) +
+  geom_line(aes(y = RH/100), linewidth = 2,  color = "green", position = position_nudge(x = -0.2)) +
+  geom_col(aes(y = Rain),fill = "blue", width = 1.5, position = position_nudge(x = -0.2)) +
+  geom_col(aes(y = WD),fill = "grey", width = 1.5, position = position_nudge(x = -0.2)) +
+  scale_x_date(limits = c(as.Date("2020-10-01"), as.Date("2021-07-01")),date_breaks = "1 month",
+               date_labels = "%b") +
+#  scale_X_continuous(limits = c(as.Date("2021-07-01"), as.Date("2022-07-01")),date_breaks = "1 month")+
+#  scale_y_continuous(
+#    name = "T(°C)/WD(hours)",  breaks=(seq(0, 30, 5)),sec.axis = sec_axis(trans=~.*3,,name = "RH(%)/Rain(mm)")) +
+  theme_economist() +
+  theme(panel.grid = element_blank(), 
+        panel.background = element_rect(fill = NA), 
+        axis.text.y = element_text(color = "black"), 
+        axis.ticks.y = element_line(color = "black"), 
+        axis.title.y = element_text(color = "black", angle = 90), 
+        axis.title.y.right = element_text(color = "black", angle = 90),
+        axis.line.y = element_line(color = "black"), 
+        axis.line.x = element_line(color = "black"),
+        axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
+        axis.title.x = element_text(color = "red"),
+  ) +
+  ggtitle("D")
+
+plot(D)
+
+figure_number = figure_number + 1
+
+```
+
