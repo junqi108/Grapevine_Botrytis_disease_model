@@ -1,0 +1,40 @@
+version: "3.7"
+
+services:
+
+  rstudio:
+    image: "ghcr.io/${CONTAINER_REG_USER}/${CONTAINER_STAN_REG_NAME}:latest"
+    container_name: "${PROJECT_NAME}-rstudio"
+    hostname: rstudio
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        BASE_IMAGE: "ghcr.io/${CONTAINER_REG_USER}/${CONTAINER_STAN_REG_NAME}:latest"
+        QUARTO_VERSION: $QUARTO_VERSION
+    restart: unless-stopped
+    stop_grace_period: 10s
+    env_file: .env
+    mem_limit: 6g
+    mem_reservation: 2g
+    environment:
+      USER: $R_STUDIO_USER
+      PASSWORD: $R_STUDIO_PASSWORD
+      ROOT: "TRUE"
+      DISABLE_AUTH: "TRUE"
+      R_SEED: $R_SEED
+      RENV_PATHS_CACHE: $RENV_PATHS_CACHE
+      QUARTO_VERSION: $QUARTO_VERSION
+    ports:
+      - ${R_STUDIO_PORT}:8787 
+    volumes:
+      - .:/home/user
+      - ../data:/home/user/data
+      - r-packages-data:${RENV_PATHS_CACHE}
+
+networks:
+  default:
+      name: $PROJECT_NAME
+
+volumes:
+  r-packages-data:
