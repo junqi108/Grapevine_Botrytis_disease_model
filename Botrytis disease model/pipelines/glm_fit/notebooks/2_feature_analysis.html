@@ -120,8 +120,8 @@ ul.task-list li input[type="checkbox"] {
 # ℹ Use `colnames()` to see all variable names</code></pre>
 </div>
 </div>
-<p>We can see evidence of colinearity in the above data. At the very least, we should probably use a combination of feature selection and regularisation. We’ll do some preliminary analysis below, although we should take the feature importance scores with a grain of salt.</p>
-<p>The mean-squared error metric will provide a model-agnostic measure of model performance. Note that we are not applying this metric to unseen data, so we should take these values with a grain of salt.</p>
+<p>We can see evidence of colinearity in the above data. At the very least, we should probably use a combination of feature selection and regularisation. We’ll do some preliminary analysis below, although we should take any resulting feature importance scores with a grain of salt.</p>
+<p>The estimated mean-squared error metric will provide a model-agnostic measure of model performance. Note that we are not applying this metric to unseen data, so we should take these values with a grain of salt as they will likely be overly-optimistic.</p>
 </section>
 <section id="linear-regression" class="level2">
 <h2 class="anchored" data-anchor-id="linear-regression">Linear regression</h2>
@@ -199,13 +199,13 @@ ul.task-list li input[type="checkbox"] {
 </section>
 <section id="non-gaussian-models" class="level2">
 <h2 class="anchored" data-anchor-id="non-gaussian-models">Non-Gaussian Models</h2>
-<p>The support of the response should really be [0, 1]. So, a Gaussian GLM doesn’t make much sense as the support is unbounded. To constrain the support of the response, we can instead use a GLM with something like:</p>
+<p>The support of the response should really be [0, 1]. So, a Gaussian GLM doesn’t make much sense as its support is unbounded. To constrain the support of the response, we can instead specify a GLM using something like:</p>
 <ul>
 <li>The beta distribution.</li>
 <li>The logit-normal</li>
 <li>A truncated Gaussian.</li>
 </ul>
-<p>However, the first two distributions above have a support of (0, 1), and we happen to have four Severity values of zero. So, we need to use a zero-inflated beta distribution to handle those zeroes. This gives us a support of [0, 1). Note also that the beta distribution has no analytical solution to calculating standard errors or confidence intervals, so we need to use a simulation-based approach to produce those values (e.g bootstrapping or Bayesian methods).</p>
+<p>However, the first two distributions above have a support of (0, 1), and we happen to have four Severity values of zero. So, we need to use a zero-inflated beta distribution to handle those zeroes. This gives us a support of [0, 1). Note also that the beta distribution has no analytical solution to calculating standard errors or confidence intervals, so we need to use a simulation-based approach to produce uncertainty intervals (e.g Frequentist bootstrapping or Bayesian models).</p>
 <p>We’ll go with the Bayesian approach using brms, as this will allow us to fit relatively more flexible models. For the purposes of feature selection, we’ll add sparsity-inducing horseshoe priors to our model.</p>
 <section id="horseshoe-model" class="level3">
 <h3 class="anchored" data-anchor-id="horseshoe-model">Horseshoe Model</h3>
@@ -249,7 +249,7 @@ Total execution time: 22.0 seconds.</code></pre>
 </section>
 <section id="multi-level-horseshoe-model" class="level3">
 <h3 class="anchored" data-anchor-id="multi-level-horseshoe-model">Multi-level Horseshoe Model</h3>
-<p>We’ll repeat the model above, but this time with the Year, Site, and Pruning status included.</p>
+<p>We’ll repeat the model above, but this time with the Year, Site, and Pruning factors included within a varying intercepts model. We can also benefit from partial pooling, as some of our factor levels contained very little data.</p>
 <div class="cell" data-hash="2_feature_analysis_cache/html/horseshoe-multilevel_b05675a417bb4f8b7af3c50a477ca66c">
 <div class="cell-output cell-output-stdout">
 <pre><code>Running MCMC with 4 parallel chains, with 3 thread(s) per chain...
@@ -333,7 +333,7 @@ Total execution time: 55.3 seconds.</code></pre>
 <section id="notes" class="level2">
 <h2 class="anchored" data-anchor-id="notes">Notes</h2>
 <p>We can see that some features are relatively informative (particularly features associated with sev2 and sev3), and that it makes sense to use a hierachical model (or at the very least, to incorporate spatial and temporal information).</p>
-<p>Beyond that, some form of feature pruning/selection is most likely required - based on the results of the linear sparsity-inducing methods (the LASSO and Horseshoe models).</p>
+<p>Beyond that, some form of feature pruning/selection is likely required - based on the results of the linear sparsity-inducing methods (the LASSO and Horseshoe models).</p>
 </section>
 
 </main>

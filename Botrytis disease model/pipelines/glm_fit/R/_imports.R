@@ -20,7 +20,6 @@ library(lubridate)
 library(ggplot2)  
 library(reshape2)
 
-
 # Stan
 library(rstan)
 library(cmdstanr)
@@ -28,6 +27,7 @@ library(loo)
 library(brms)
 library(bayesplot)
 library(tidybayes)
+library(projpred)
 
 # Documentation and Styling
 library(formatR)

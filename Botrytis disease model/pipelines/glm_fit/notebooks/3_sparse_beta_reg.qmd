@@ -1,0 +1,277 @@
+---
+title: "3_sparse_beta_reg"
+format: html
+editor: visual
+---
+
+## Sparse Beta Regression
+
+Imports
+
+```{r load-data, include = TRUE, echo = FALSE, message = FALSE, warning = FALSE, cache = TRUE}
+
+library(here)
+BASE_DIR <- here("R")
+source(file.path(BASE_DIR, "_imports.R"))
+df <- read_sb_data(INPUT_DATA)
+df
+```
+
+Our non-linear models didn't output particularly outstanding results. However, both the linear LASSO and horseshoe models provided some evidence that our parameter space should be relatively sparse. So, we'll build upon the multi-level horseshoe model.
+
+## Varying Intercepts
+
+```{r horseshoe-multilevel-int, include = TRUE, echo = FALSE, message = FALSE, warning = FALSE, cache = TRUE}
+
+df_with_factors <- df %>%
+  select(-c(Site, pruning, Severity, year)) %>%
+  makeX(na.impute = T) %>%
+  as_tibble() %>%
+  mutate(
+    Site = df$Site, 
+    pruning = df$pruning, 
+    year = df$year, 
+    Severity = df$Severity
+  )  
+
+multi_level_linear_formula <- df_with_factors %>% 
+  select(-c(Site, pruning, Severity, year)) %>% 
+  colnames() %>%
+  paste0(collapse = " + ") %>%
+  str_c("Severity ~ ", ., " + (1 | Site) + (1 | year) + pruning")
+
+linear_multi_level_horseshoe <- 
+ brm(
+    bf(
+      multi_level_linear_formula,
+      phi ~ 1,
+      zi ~ 1
+    ),
+    family = zero_inflated_beta(),
+    data = df_with_factors,
+    prior = c(
+      set_prior("horseshoe(1)", class = "b")
+    ),
+    thin = 1,
+    cores = N_CORES,
+    seed = SEED,
+    algorithm = SAMPLING_ALGORITHM,
+    iter = STAN_ITER * 2,
+    init = STAN_INIT_START,
+    silent = 1,
+    refresh = 0,
+    warmup = STAN_WARMUP,
+    sample_prior = STAN_SAMPLE_PRIOR,
+    chains = N_CHAINS,
+    backend = STAN_BACKEND,
+    threads = threading(WITHIN_CHAIN_THREADS),
+    save_pars = save_pars(all = T),
+    control = list(adapt_delta = 0.99),
+    file_refit = FILE_REFIT
+  )
+
+fixef(linear_multi_level_horseshoe) %>%
+  as_tibble(rownames = "0") %>%
+  mutate(Estimate = abs(Estimate)) %>%
+  arrange(-Estimate)
+```
+
+```{r horseshoe-multilevel-int-mse, include = TRUE, echo = FALSE, message = FALSE, warning = FALSE, cache = TRUE}
+
+posterior_predict(linear_multi_level_horseshoe, newx = df_with_factors) %>%
+  colMeans() %>%
+  mse(df_with_factors$Severity)
+```
+
+```{r horseshoe-multilevel-int-ppc, include = TRUE, echo = FALSE, message = FALSE, warning = FALSE, cache = TRUE}
+
+posterior_predict(linear_multi_level_horseshoe, newx = df_with_factors, ndraws = 50) %>%
+  ppc_dens_overlay(df_with_factors$Severity, yrep = .)
+```
+
+## Varying Slopes 
+
+```{r horseshoe-multilevel-slope, include = TRUE, echo = FALSE, message = FALSE, warning = FALSE, cache = TRUE}
+
+multi_level_slope_formula <- df_with_factors %>% 
+  select(-c(Site, pruning, Severity, year)) %>% 
+  colnames() %>%
+  paste0(collapse = " + ") %>%
+  str_c("Severity ~ ", ., " + (1 + sev23 | Site) + (1 + sev23 | year) + pruning")
+
+slope_multi_level_horseshoe <- 
+ brm(
+    bf(
+      multi_level_slope_formula,
+      phi ~ 1,
+      zi ~ 1
+    ),
+    family = zero_inflated_beta(),
+    data = df_with_factors,
+    prior = c(
+      set_prior("horseshoe(1)", class = "b")
+    ),
+    thin = 1,
+    cores = N_CORES,
+    seed = SEED,
+    algorithm = SAMPLING_ALGORITHM,
+    iter = STAN_ITER * 2,
+    init = STAN_INIT_START,
+    silent = 1,
+    refresh = 0,
+    warmup = STAN_WARMUP,
+    sample_prior = STAN_SAMPLE_PRIOR,
+    chains = N_CHAINS,
+    backend = STAN_BACKEND,
+    threads = threading(WITHIN_CHAIN_THREADS),
+    save_pars = save_pars(all = T),
+    control = list(adapt_delta = 0.99),
+    file_refit = FILE_REFIT
+  )
+
+fixef(slope_multi_level_horseshoe) %>%
+  as_tibble(rownames = "0") %>%
+  mutate(Estimate = abs(Estimate)) %>%
+  arrange(-Estimate)
+```
+
+```{r horseshoe-multilevel-slope-mse, include = TRUE, echo = FALSE, message = FALSE, warning = FALSE, cache = TRUE}
+
+posterior_predict(slope_multi_level_horseshoe, newx = df_with_factors) %>%
+  colMeans() %>%
+  mse(df_with_factors$Severity)
+```
+
+```{r horseshoe-multilevel-slope-ppc, include = TRUE, echo = FALSE, message = FALSE, warning = FALSE, cache = TRUE}
+
+posterior_predict(slope_multi_level_horseshoe, newx = df_with_factors, ndraws = 50) %>%
+  ppc_dens_overlay(df_with_factors$Severity, yrep = .)
+```
+
+## Phi and Zi
+
+```{r horseshoe-multilevel-phi-zi, include = TRUE, echo = FALSE, message = FALSE, warning = FALSE, cache = TRUE}
+
+phi_zi_multi_level_horseshoe <- 
+ brm(
+    bf(
+      multi_level_slope_formula,
+      phi ~ 1 + sev23,
+      zi ~ 1 + sev23
+    ),
+    family = zero_inflated_beta(),
+    data = df_with_factors,
+    prior = c(
+      set_prior("horseshoe(1)", class = "b")
+    ),
+    thin = 1,
+    cores = N_CORES,
+    seed = SEED,
+    algorithm = SAMPLING_ALGORITHM,
+    iter = STAN_ITER * 2,
+    init = STAN_INIT_START,
+    silent = 1,
+    refresh = 0,
+    warmup = STAN_WARMUP,
+    sample_prior = STAN_SAMPLE_PRIOR,
+    chains = N_CHAINS,
+    backend = STAN_BACKEND,
+    threads = threading(WITHIN_CHAIN_THREADS),
+    save_pars = save_pars(all = T),
+    control = list(adapt_delta = 0.99),
+    file_refit = FILE_REFIT
+  )
+
+fixef(phi_zi_multi_level_horseshoe) %>%
+  as_tibble(rownames = "0") %>%
+  mutate(Estimate = abs(Estimate)) %>%
+  arrange(-Estimate)
+```
+
+```{r horseshoe-multilevel-phi-zi-mse, include = TRUE, echo = FALSE, message = FALSE, warning = FALSE, cache = TRUE}
+
+posterior_predict(phi_zi_multi_level_horseshoe, newx = df_with_factors) %>%
+  colMeans() %>%
+  mse(df_with_factors$Severity)
+```
+
+```{r horseshoe-multilevel-phi-zi-ppc, include = TRUE, echo = FALSE, message = FALSE, warning = FALSE, cache = TRUE}
+
+posterior_predict(phi_zi_multi_level_horseshoe, newx = df_with_factors, ndraws = 50) %>%
+  ppc_dens_overlay(df_with_factors$Severity, yrep = .)
+```
+
+## Model Comparison
+
+```{r model-compare, include = TRUE, echo = FALSE, message = FALSE, warning = FALSE, cache = TRUE}
+
+loo_model_weights(
+  linear_multi_level_horseshoe, slope_multi_level_horseshoe, phi_zi_multi_level_horseshoe,
+  method = "stacking"
+) %>%
+  as.matrix() %>%
+  as_tibble(rownames = "0") %>%
+  arrange(-V1)
+```
+The varying slopes model with the variance (phi) and switching (zi) components included has the best fit according to the Pareto smoothed importance sampling leave-one-out cross validation (PSIS-LOO) procedure. Though we can ensemble all three models if needed.
+
+ ## Finite Beta Mixture
+
+Finally, we'll throw in a 2-component Beta mixture model.
+
+```{r horseshoe-multilevel-mixture, include = TRUE, echo = FALSE, message = FALSE, warning = FALSE, cache = TRUE}
+
+mixture_multi_level_horseshoe <- 
+ brm(
+    bf(
+      multi_level_slope_formula,
+      phi1 + phi2 + zi1 + zi2 ~ 1,
+      theta2 ~ 1 + sev23
+    ),
+    family = mixture(
+      zero_inflated_beta(),
+      zero_inflated_beta()
+    ),
+    data = df_with_factors,
+    prior = c(
+      set_prior("horseshoe(1)", class = "b", dpar = "mu1"),
+      set_prior("horseshoe(1)", class = "b", dpar = "mu2")
+    ),
+    thin = 1,
+    cores = N_CORES,
+    seed = SEED,
+    algorithm = SAMPLING_ALGORITHM,
+    iter = STAN_ITER * 2,
+    init = STAN_INIT_START,
+    silent = 1,
+    refresh = 0,
+    warmup = STAN_WARMUP,
+    sample_prior = STAN_SAMPLE_PRIOR,
+    chains = N_CHAINS,
+    backend = STAN_BACKEND,
+    threads = threading(WITHIN_CHAIN_THREADS),
+    save_pars = save_pars(all = T),
+    control = list(adapt_delta = 0.999),
+    file_refit = FILE_REFIT
+  )
+
+fixef(mixture_multi_level_horseshoe) %>%
+  as_tibble(rownames = "0") %>%
+  mutate(Estimate = abs(Estimate)) %>%
+  arrange(-Estimate)
+```
+
+```{r horseshoe-multilevel-mixture-mse, include = TRUE, echo = FALSE, message = FALSE, warning = FALSE, cache = TRUE}
+
+posterior_predict(mixture_multi_level_horseshoe, newx = df_with_factors) %>%
+  colMeans() %>%
+  mse(df_with_factors$Severity)
+```
+
+```{r horseshoe-multilevel-mixture-ppc, include = TRUE, echo = FALSE, message = FALSE, warning = FALSE, cache = TRUE}
+
+posterior_predict(mixture_multi_level_horseshoe, newx = df_with_factors, ndraws = 100) %>%
+  ppc_dens_overlay(df_with_factors$Severity, yrep = .)
+```
+
+No real difference from the varying slopes model.
