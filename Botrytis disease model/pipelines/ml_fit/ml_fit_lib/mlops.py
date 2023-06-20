@@ -91,14 +91,21 @@ class MLFlowPipeline:
         mlflow.end_run()
         self.tmp_dir.cleanup()    
 
-    def log_predictions(self, preds, actual, lb, ub, target, pi, interval = 0.01):
+    def log_predictions(self, preds, actual, target, interval = 0.01):
         pred_interval = int(len(preds) * interval)
-        pi = pi * 100
         
         for i, pred in enumerate(preds):
             if i % pred_interval != 0:
                 continue
             self.log_metric(f"Predicted {target}", pred, step = i)
             self.log_metric(f"Actual {target}", actual[i], step = i)
-            self.log_metric(f"Lower bound {pi} {target}", lb[i], step = i)
-            self.log_metric(f"Upper bound {pi} {target}", ub[i], step = i)
+
+    def log_prediction_intervals(self, lb, ub, target, alpha, interval = 0.01):
+        pred_interval = int(len(lb) * interval)
+        pred_interval_percent = (1 - alpha) * 100
+
+        for i, _ in enumerate(lb):
+            if i % pred_interval != 0:
+                continue
+            self.log_metric(f"{pred_interval_percent} lower bound {target}", lb[i], step = i)
+            self.log_metric(f"{pred_interval_percent} upper bound {target}", ub[i], step = i)

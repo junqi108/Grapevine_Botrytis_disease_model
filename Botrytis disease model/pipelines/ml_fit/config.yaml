@@ -29,7 +29,7 @@ data_split_stratify: false
 
 run_distributed: false
 n_iter: 3
-n_estimators: 5
+n_estimators: 3
 search_algorithm: random
 distributed_search_algorithm: optuna
 search_library: scikit-learn 
@@ -47,7 +47,7 @@ ensemble_methods:
   - bagging
   - blending
   - stacking
-  
+
 meta_model: dt
 
 categorical_features:
