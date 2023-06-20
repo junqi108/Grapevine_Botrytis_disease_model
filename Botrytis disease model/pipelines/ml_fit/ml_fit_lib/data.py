@@ -76,3 +76,4 @@ class Data:
             The queried dataframe.
         """
         return df.query(df_query).reset_index()
+    

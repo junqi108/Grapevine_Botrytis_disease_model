@@ -1,0 +1,5 @@
+name: train_dkl
+
+entry_points:
+  main:
+    command: python run.py  

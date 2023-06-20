@@ -90,3 +90,7 @@ enforce_exogenous: false
 target_metric_ts: SMAPE
 scale_target: zscore
 transform_target: box-cox
+
+num_latents: 100
+num_epochs: 4000
+lr: 0.01

@@ -19,3 +19,8 @@ GRAPEVINE_RESP = ["malicConcentration_fruit_scaled", "Lphloem_scaled", "Fresh we
 # Config
 CONFIG_FILE = "config.yaml"
 CONFIG_PATH = path_join(BASE_DIR, CONFIG_FILE)
+
+# Gaussian Process
+GAUSSIAN_PROCESS_DIR = path_join("..", BASE_DIR, DATA_DIR)
+GP_MODEL_FILE = path_join(GAUSSIAN_PROCESS_DIR, "gp.pth")
+DKL_MODEL_FILE = path_join(GAUSSIAN_PROCESS_DIR, "dkl.pth")
