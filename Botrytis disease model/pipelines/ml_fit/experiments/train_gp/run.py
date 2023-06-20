@@ -19,7 +19,7 @@ from ml_fit_lib.constants import *
 from ml_fit_lib.data import Data
 from ml_fit_lib.gp import (
     MultitaskVariationalGPModel, get_gp_scores, log_predictive_dist,
-    get_device, plot_results, get_grape_data
+    get_device, plot_results, get_grape_data, load_gp
 )
 from ml_fit_lib.mlops import MLFlowPipeline
 
@@ -43,7 +43,7 @@ if __name__ == "__main__":
 # Main
 
 def main():
-    X_train, Y_train, X_test, Y_test, _ = get_grape_data(
+    X_train, Y_train, X_test, Y_test, _, _, _ = get_grape_data(
         DATA, GRAPEVINE_PARAMS_TRAINING, GRAPEVINE_PARAMS_TESTING, GRAPEVINE_DATA_TRAINING, 
         GRAPEVINE_DATA_TESTING, GRAPEVINE_RESP
     )
@@ -103,6 +103,10 @@ def main():
 
     plt.savefig(out_preds)
     mlflow.log_artifact(out_preds)
+
+    config_out = path_join("out", CONFIG_FILE)
+    CONFIG.export(config_out)
+    PIPELINE.log_artifact(config_out)
 
 if __name__ == "__main__":
     main()

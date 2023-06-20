@@ -157,9 +157,20 @@ def get_grape_data(
     Y_test = test[grapevine_resp]
 
     device = get_device()
-    X_train = torch.from_numpy(scaler.transform(X_train)).float().to(device)
-    X_test = torch.from_numpy(scaler.transform(X_test)).float().to(device)
+    X_train_torch = torch.from_numpy(scaler.transform(X_train)).float().to(device)
+    X_test_torch = torch.from_numpy(scaler.transform(X_test)).float().to(device)
     Y_train = torch.from_numpy(Y_train.values).float().to(device)
     Y_test = torch.from_numpy(Y_test.values).float().to(device)
 
-    return X_train, Y_train, X_test, Y_test, scaler
+    return X_train_torch, Y_train, X_test_torch, Y_test, scaler, X_train, X_test
+
+def load_gp(X_train, Y_train, num_latents, gp_model_fit):
+    device = get_device()
+    model = MultitaskVariationalGPModel(n_col = X_train.shape[-1], num_latents = num_latents, num_tasks = Y_train.shape[-1])
+    state_dict = torch.load(gp_model_fit)
+    model.load_state_dict(state_dict)
+    model.eval().to(device)
+    likelihood = gpytorch.likelihoods.MultitaskGaussianLikelihood(num_tasks = Y_train.shape[-1])
+    likelihood.eval().to(device)
+
+    return model, likelihood

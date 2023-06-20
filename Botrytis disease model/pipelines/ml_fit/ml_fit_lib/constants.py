@@ -6,6 +6,7 @@ BASE_DIR = path_join("..", "..")
 # Data
 DATA_DIR = "data"
 DATA_FILE = path_join("..", BASE_DIR, DATA_DIR, "sauvignon_blanc_severity_calc.csv")
+OUT_DIR = path_join("..", BASE_DIR, DATA_DIR)
 
 # Grapevine
 GRAPEVINE_PARAMS_FILE = path_join("..", BASE_DIR, DATA_DIR, "grape_params.csv")
@@ -21,6 +22,8 @@ CONFIG_FILE = "config.yaml"
 CONFIG_PATH = path_join(BASE_DIR, CONFIG_FILE)
 
 # Gaussian Process
-GAUSSIAN_PROCESS_DIR = path_join("..", BASE_DIR, DATA_DIR)
-GP_MODEL_FILE = path_join(GAUSSIAN_PROCESS_DIR, "gp.pth")
-DKL_MODEL_FILE = path_join(GAUSSIAN_PROCESS_DIR, "dkl.pth")
+GP_MODEL_FILE = path_join(OUT_DIR, "gp.pth")
+DKL_MODEL_FILE = path_join(OUT_DIR, "dkl.pth")
+
+# Optimisation
+DKL_MODEL_FILE = path_join(OUT_DIR, "opt.pkl")

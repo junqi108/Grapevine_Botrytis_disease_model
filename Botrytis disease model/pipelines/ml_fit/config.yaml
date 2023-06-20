@@ -91,6 +91,10 @@ target_metric_ts: SMAPE
 scale_target: zscore
 transform_target: box-cox
 
-num_latents: 100
-num_epochs: 4000
+num_latents: 120
+num_epochs: 5000
 lr: 0.01
+
+optimisation_sampler: tpes
+load_optimiser: false
+n_trials: 100

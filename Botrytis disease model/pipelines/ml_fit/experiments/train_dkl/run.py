@@ -43,7 +43,7 @@ if __name__ == "__main__":
 # Main
 
 def main():
-    X_train, Y_train, X_test, Y_test, _ = get_grape_data(
+    X_train, Y_train, X_test, Y_test, _, _, _ = get_grape_data(
         DATA, GRAPEVINE_PARAMS_TRAINING, GRAPEVINE_PARAMS_TESTING, GRAPEVINE_DATA_TRAINING, 
         GRAPEVINE_DATA_TESTING, GRAPEVINE_RESP
     )

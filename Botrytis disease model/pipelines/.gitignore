@@ -7,3 +7,5 @@ t*_grapevine_data.csv
 
 # Torch
 *.pth
+*.pkl
+trial_results.csv
