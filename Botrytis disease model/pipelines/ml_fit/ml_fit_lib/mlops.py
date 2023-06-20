@@ -56,6 +56,16 @@ class MLFlowPipeline:
         """
         mlflow.log_artifact(artifact_path)
 
+    def log_artifacts(self, artifact_path: str) -> None:
+        """
+        Log the MLFlow artifact.
+
+        Args:
+            artifact_path (str): 
+                The artifact file path.
+        """
+        mlflow.log_artifacts(artifact_path)
+
     def log_metric(self, name: str, metric, **kwargs) -> None:
         """
         Log the MLFlow metric.
@@ -90,6 +100,14 @@ class MLFlowPipeline:
         """
         mlflow.end_run()
         self.tmp_dir.cleanup()    
+
+    def log_series(self, series, name, interval = 0.01):
+        series_interval = int(len(series) * interval)
+        
+        for i, value in enumerate(series):
+            if i % series_interval != 0:
+                continue
+            self.log_metric(name, value, step = i)
 
     def log_predictions(self, preds, actual, target, interval = 0.01):
         pred_interval = int(len(preds) * interval)

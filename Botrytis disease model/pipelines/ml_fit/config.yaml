@@ -1,6 +1,6 @@
 target: Severity
 target_metric: MSE
-n_select: 10
+n_select: 2
 turbo: true
 train_size: 0.7
 preprocess: true
@@ -12,7 +12,7 @@ normalize: true
 normalize_method: zscore
 data_split_shuffle: true
 fold_strategy: kfold
-fold: 3
+fold: 5
 fold_shuffle: true
 fold_groups: Site
 n_jobs: -1
@@ -28,8 +28,8 @@ data_split_stratify: false
 #   - Site
 
 run_distributed: false
-n_iter: 3
-n_estimators: 3
+n_iter: 2
+n_estimators: 2
 search_algorithm: random
 distributed_search_algorithm: optuna
 search_library: scikit-learn 
@@ -73,3 +73,20 @@ contamination_fraction: 0.05
 clustering_model: kmeans
 num_clusters: 7
 clustering_ground_truth: Site
+
+numeric_imputation_target: linear
+numeric_imputation_exogenous: linear
+fold_strategy_ts: sliding
+fh: 100
+seasonal_period: null
+ignore_seasonality_test: true
+sp_detection: auto
+max_sp_to_consider: 4
+remove_harmonics: false
+harmonic_order_method: harmonic_max
+num_sps_to_use: 1
+coverage: 0.95
+enforce_exogenous: false
+target_metric_ts: SMAPE
+scale_target: zscore
+transform_target: box-cox

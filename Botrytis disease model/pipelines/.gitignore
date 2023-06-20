@@ -1,0 +1,6 @@
+# Grapevine data
+grape_data.csv
+grape_params.csv
+*.png
+t*_grapevine_params.csv
+t*_grapevine_data.csv

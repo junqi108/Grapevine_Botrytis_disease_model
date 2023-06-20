@@ -1,0 +1,5 @@
+name: ts_forecasting
+
+entry_points:
+  main:
+    command: python run.py  
