@@ -1,0 +1,7 @@
+chains: 4
+draws: 1000
+lr: 0.01
+num_epochs: 5000
+num_latents: 120
+optimisation_sampler: tpes
+random_seed: 100

@@ -9,3 +9,4 @@ t*_grapevine_data.csv
 *.pth
 *.pkl
 trial_results.csv
+summary.csv
