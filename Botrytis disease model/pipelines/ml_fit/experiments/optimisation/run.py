@@ -6,7 +6,7 @@ import mlflow
 from joblib import dump as optimiser_dump, load as optimiser_load
 import numpy as np
 import optuna
-from optuna.samplers import TPESampler, CmaEsSampler, NSGAIISampler, MOTPESampler, QMCSampler
+from optuna.samplers import TPESampler, CmaEsSampler, NSGAIIISampler, MOTPESampler, QMCSampler
 import os
 from os.path import join as path_join
 import pandas as pd
@@ -44,7 +44,7 @@ if __name__ == "__main__":
     OPTUNA_SAMPLERS = {
         "tpes" : TPESampler, 
         "cmaes" : CmaEsSampler, 
-        "nsga" : NSGAIISampler, 
+        "nsga" : NSGAIIISampler, 
         "motpes" : MOTPESampler,
         "qmc": QMCSampler
     }

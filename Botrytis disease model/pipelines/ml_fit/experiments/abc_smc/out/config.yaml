@@ -1,5 +1,5 @@
 chains: 4
-distribution: truncated_normal
+distribution: horseshoe
 draws: 200
 lr: 0.01
 num_epochs: 3000

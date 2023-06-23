@@ -40,7 +40,6 @@ if __name__ == "__main__":
 
     DATA = Data()
 
-    OPTIMISER_NAME = CONFIG.get("optimisation_sampler")
     SEED = CONFIG.get("random_seed")
 
     X_train, Y_train, _, Y_test, SCALER, X_train_df, X_test_df = get_grape_data(
@@ -94,7 +93,7 @@ def simulator_model(
     discrepency = np.linalg.norm(mean - Y_TEST).item()
     return np.array([0])
 
-def set_prior(col, lb, ub):
+def set_prior(col, lb, ub, sigma = None):
     prior = { "parameter": col, "distribution": DISTRIBUTION }
     PRIORS.append(prior)
 
@@ -121,6 +120,13 @@ def set_prior(col, lb, ub):
         prior["b"] = b
         return pm.Laplace(col, mu = mu, b = b)
     
+    if DISTRIBUTION == "horseshoe":
+        mu = (lb + ub) / 2
+        lower = 0
+        prior["mu"] = mu
+        prior["lower"] = lower
+        return pm.TruncatedNormal(col, mu = mu, sigma = sigma, lower = lower)
+    
     prior["lower"] = lb
     prior["upper"] = ub
     return pm.Uniform(col, lb, ub)
@@ -129,11 +135,17 @@ def fit_model(
         X_train_bounds
     ):
     with pm.Model() as model:
+        σ = None
+        if DISTRIBUTION == "horseshoe":
+            λ = pm.HalfCauchy('lambda', beta = 1)
+            τ = pm.HalfCauchy('tau', beta = 1)
+            σ = pm.Deterministic(DISTRIBUTION, τ * τ* λ * λ)
+
         params = []
         for col in X_train_bounds.drop(columns = "time_step").columns:
             lb = X_train_bounds.iloc[0][col]
             ub = X_train_bounds.iloc[-1][col]
-            param = set_prior(col, lb, ub)
+            param = set_prior(col, lb, ub, σ)
             params.append(param)
         params = tuple(params)
 

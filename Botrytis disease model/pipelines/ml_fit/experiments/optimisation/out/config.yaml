@@ -5,5 +5,5 @@ n_jobs: -1
 n_trials: 300
 num_epochs: 3000
 num_latents: 120
-optimisation_sampler: qmc
+optimisation_sampler: nsga
 random_seed: 100

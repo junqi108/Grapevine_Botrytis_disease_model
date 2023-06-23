@@ -95,10 +95,10 @@ num_latents: 120
 num_epochs: 3000
 lr: 0.01
 
-optimisation_sampler: tpes
+optimisation_sampler: tpse
 load_optimiser: false
 n_trials: 300
 
 draws: 200
 chains: 4
-distribution: horseshoe
+distribution: truncated_gaussian
