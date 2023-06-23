@@ -1,8 +1,8 @@
 chains: 4
-distribution: triangular
+distribution: truncated_normal
 draws: 200
 lr: 0.01
-num_epochs: 5000
+num_epochs: 3000
 num_latents: 120
 optimisation_sampler: tpes
 random_seed: 100

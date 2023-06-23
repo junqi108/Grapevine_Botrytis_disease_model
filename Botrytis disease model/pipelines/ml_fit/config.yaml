@@ -92,7 +92,7 @@ scale_target: zscore
 transform_target: box-cox
 
 num_latents: 120
-num_epochs: 5000
+num_epochs: 3000
 lr: 0.01
 
 optimisation_sampler: tpes
@@ -101,4 +101,4 @@ n_trials: 300
 
 draws: 200
 chains: 4
-distribution: triangular
+distribution: horseshoe
