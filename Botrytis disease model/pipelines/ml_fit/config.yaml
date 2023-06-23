@@ -97,7 +97,8 @@ lr: 0.01
 
 optimisation_sampler: tpes
 load_optimiser: false
-n_trials: 100
+n_trials: 300
 
-draws: 1000
+draws: 200
 chains: 4
+distribution: triangular

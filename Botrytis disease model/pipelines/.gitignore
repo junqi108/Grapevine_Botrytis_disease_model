@@ -10,3 +10,5 @@ t*_grapevine_data.csv
 *.pkl
 trial_results.csv
 summary.csv
+priors.csv
+model_graph

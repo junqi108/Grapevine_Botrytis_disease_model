@@ -1,5 +1,6 @@
 chains: 4
-draws: 1000
+distribution: triangular
+draws: 200
 lr: 0.01
 num_epochs: 5000
 num_latents: 120

@@ -53,6 +53,10 @@ if __name__ == "__main__":
     MODEL, LIKELIHOOD = MODEL.to("cpu"), LIKELIHOOD.to("cpu")
     MAX_TIME_STEP = Y_test.shape[0] 
 
+    DISTRIBUTION = CONFIG.get("distribution")
+
+    PRIORS = []
+
 ##############################################
 # Main
 
@@ -90,16 +94,46 @@ def simulator_model(
     discrepency = np.linalg.norm(mean - Y_TEST).item()
     return np.array([0])
 
+def set_prior(col, lb, ub):
+    prior = { "parameter": col, "distribution": DISTRIBUTION }
+    PRIORS.append(prior)
+
+    if DISTRIBUTION == "triangular":
+        c = (lb + ub) / 2
+        prior["c"] = c
+        prior["lower"] = lb
+        prior["upper"] = ub
+        return pm.Triangular(col, lower = lb, upper = ub, c = c)
+
+    if DISTRIBUTION == "truncated_normal":
+        mu = (lb + ub) / 2
+        sigma = (ub - lb) / 6
+        lower = 0
+        prior["mu"] = mu
+        prior["sigma"] = sigma
+        prior["lower"] = lower
+        return pm.TruncatedNormal(col, mu = mu, sigma = sigma, lower = lower)
+
+    if DISTRIBUTION == "laplace":
+        mu = (lb + ub) / 2
+        b = (ub - lb) / 6
+        prior["mu"] = mu
+        prior["b"] = b
+        return pm.Laplace(col, mu = mu, b = b)
+    
+    prior["lower"] = lb
+    prior["upper"] = ub
+    return pm.Uniform(col, lb, ub)
+
 def fit_model(
         X_train_bounds
     ):
     with pm.Model() as model:
-        
         params = []
         for col in X_train_bounds.drop(columns = "time_step").columns:
             lb = X_train_bounds.iloc[0][col]
             ub = X_train_bounds.iloc[-1][col]
-            param = pm.Uniform(col, lb, ub)
+            param = set_prior(col, lb, ub)
             params.append(param)
         params = tuple(params)
 
@@ -130,32 +164,44 @@ def fit_model(
             random_seed = SEED,
             progressbar = True
         )
-    
-    for plot in ["trace", "rank_vlines", "rank_bars"]:
-        az.plot_trace(trace, kind = plot)
-        outfile = path_join("out", f"{plot}.png")
-        plt.savefig(outfile)
+
+        PIPELINE.log_param("draws", CONFIG.get("draws"))
+        PIPELINE.log_param("chains", CONFIG.get("chains"))
+        PIPELINE.log_param("seed", SEED)
+        PIPELINE.log_param("distribution", CONFIG.get("distribution"))
+
+        textsize = 7
+        for plot in ["trace", "rank_vlines", "rank_bars"]:
+            az.plot_trace(trace, kind = plot, plot_kwargs = {"textsize": textsize})
+            outfile = path_join("out", f"{plot}.png")
+            plt.tight_layout()
+            plt.savefig(outfile)
+            PIPELINE.log_artifact(outfile)
+
+        def __create_plot(trace, plot_func, plot_name, kwargs):
+            plot_func(trace, **kwargs)
+            outfile = path_join("out", f"{plot_name}.png")
+            plt.tight_layout()
+            plt.savefig(outfile)
+            PIPELINE.log_artifact(outfile)
+        
+        kwargs = {"figsize": (12, 12), "scatter_kwargs": dict(alpha = 0.01), "marginals": True, "textsize": textsize}
+        __create_plot(trace, az.plot_pair, "marginals", kwargs)
+
+        kwargs = {"figsize": (12, 12), "textsize": textsize}
+        __create_plot(trace, az.plot_violin, "violin", kwargs)
+
+        kwargs = {"figsize": (12, 12), "textsize": textsize}
+        __create_plot(trace, az.plot_posterior, "posterior", kwargs)
+
+        outfile = path_join("out", "priors.csv")
+        pd.DataFrame.from_dict(PRIORS).to_csv(outfile, index = False)
         PIPELINE.log_artifact(outfile)
 
-    az.plot_pair(trace, figsize = (12, 12), scatter_kwargs=dict(alpha = 0.01), marginals = True)
-    outfile = path_join("out", "marginals.png")
-    plt.savefig(outfile)
-    PIPELINE.log_artifact(outfile)
-
-    az.plot_violin(trace, figsize = (12, 12))
-    outfile = path_join("out", "violin.png")
-    plt.savefig(outfile)
-    PIPELINE.log_artifact(outfile)
-
-    az.plot_posterior(trace, figsize = (12, 12))
-    outfile = path_join("out", "posterior.png")
-    plt.savefig(outfile)
-    PIPELINE.log_artifact(outfile)
-
-    outfile = path_join("out", "summary.csv")
-    az.summary(trace).to_csv(outfile, index = False)
-    PIPELINE.log_artifact(outfile)
-
+        outfile = path_join("out", "summary.csv")
+        az.summary(trace).to_csv(outfile, index = False)
+        PIPELINE.log_artifact(outfile)
+        
 def main():
     X_train_bounds = X_train_df.agg(['min', 'max'])
     fit_model(X_train_bounds)

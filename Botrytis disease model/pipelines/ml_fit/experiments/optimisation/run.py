@@ -136,8 +136,9 @@ def objective(trial, model, likelihood, y_test, scaler, X_train_bounds):
 
 def save_model(study, X_test_df, output_dir: str):
     trial_out = path_join(output_dir, "trial_results.csv")
-    trials_df = study.trials_dataframe().sort_values("value", ascending = True)
-    trials_df.to_csv(trial_out, index = False)
+    trials_df = study.trials_dataframe()
+    PIPELINE.log_series(trials_df["value"].values, "Discrepency")
+    trials_df.sort_values("value", ascending = True).to_csv(trial_out, index = False)
     print(f"Trial results written to {trial_out}")
     PIPELINE.log_artifact(trial_out)
 
@@ -151,7 +152,7 @@ def save_model(study, X_test_df, output_dir: str):
         plot_func(study).write_image(img_file)
         PIPELINE.log_artifact(img_file)
 
-    __plot_results(optuna.visualization.plot_contour, "contour")
+    # __plot_results(optuna.visualization.plot_contour, "contour")
     __plot_results(optuna.visualization.plot_edf, "edf")
     __plot_results(optuna.visualization.plot_optimization_history, "optimization_history")
     __plot_results(optuna.visualization.plot_parallel_coordinate, "parallel_coordinate")
