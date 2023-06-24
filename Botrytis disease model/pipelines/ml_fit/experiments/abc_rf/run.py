@@ -10,6 +10,7 @@ from os.path import join as path_join
 import pandas as pd
 import pymc as pm
 from matplotlib import pyplot as plt
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 import sys
 import torch
 
@@ -55,6 +56,9 @@ if __name__ == "__main__":
     DISTRIBUTION = CONFIG.get("distribution")
 
     PRIORS = []
+
+    STATISTICS = [ "mean_laplace", "median_laplace", "mean_gaussian", "median_gaussian" ]
+    STATISTIC_FUNCTIONS = [ np.mean, np.median ]
 
 ##############################################
 # Main
@@ -131,7 +135,7 @@ def set_prior(col, lb, ub, sigma = None):
     return pm.Uniform(col, lb, ub)
 
 def fit_model(
-        X_train_bounds
+        X_train_bounds, sum_stat, distance
     ):
     with pm.Model() as model:
         σ = None
@@ -152,16 +156,12 @@ def fit_model(
             "Y_obs",
             simulator_model,
             params = params,
-            distance = "gaussian",
-            sum_stat = "median",
+            distance = distance,
+            sum_stat = sum_stat,
             epsilon = 1,
             observed = Y_TEST,
         )
 
-    pgm = pm.model_to_graphviz(model = model)
-    pgm_out = path_join("out", "model_graph.png")
-    pgm.render(format = "png", directory = "out", filename = "model_graph")
-    PIPELINE.log_artifact(pgm_out)
     chains = CONFIG.get("chains")
 
     with model:
@@ -176,46 +176,107 @@ def fit_model(
             progressbar = True
         )
 
-        PIPELINE.log_param("draws", CONFIG.get("draws"))
-        PIPELINE.log_param("chains", CONFIG.get("chains"))
-        PIPELINE.log_param("seed", SEED)
-        PIPELINE.log_param("distribution", CONFIG.get("distribution"))
+    return model, trace
 
-        textsize = 7
-        for plot in ["trace", "rank_vlines", "rank_bars"]:
-            az.plot_trace(trace, kind = plot, plot_kwargs = {"textsize": textsize})
-            outfile = path_join("out", f"{plot}.png")
-            plt.tight_layout()
-            plt.savefig(outfile)
-            PIPELINE.log_artifact(outfile)
+def select_model(
+    models, n_trees = 1000, f_max_features = 0.5 
+):
+    n_models = len(models)
+    ref_table = []
 
-        def __create_plot(trace, plot_func, plot_name, kwargs):
-            plot_func(trace, **kwargs)
-            outfile = path_join("out", f"{plot_name}.png")
-            plt.tight_layout()
-            plt.savefig(outfile)
-            PIPELINE.log_artifact(outfile)
-        
-        kwargs = {"figsize": (12, 12), "scatter_kwargs": dict(alpha = 0.01), "marginals": True, "textsize": textsize}
-        __create_plot(trace, az.plot_pair, "marginals", kwargs)
+    for model, trace in models.values():
+        obs_name = model.observed_RVs[0].name
+        pps = pm.sample_posterior_predictive(
+            trace, model = model, return_inferencedata = False,
+            progressbar = True, random_seed = SEED
+        )
 
-        kwargs = {"figsize": (12, 12), "textsize": textsize}
-        __create_plot(trace, az.plot_violin, "violin", kwargs)
+        # 3 dims if only one chain
+        # 4 dims if multiple chains
+        n_chains = 1
+        posterior_predictive_draws = pps[obs_name].squeeze()
+        if posterior_predictive_draws.ndim == 4:
+            n_chains, n_draws, n_obs, n_features  = posterior_predictive_draws.shape
+            posterior_predictive_draws = posterior_predictive_draws.reshape((n_chains * n_draws, n_obs, n_features))
 
-        kwargs = {"figsize": (12, 12), "textsize": 5}
-        __create_plot(trace, az.plot_posterior, "posterior", kwargs)
+        pps_sum = []
+        for stat in STATISTIC_FUNCTIONS:
+            # n_features = n_outputs * n_summary_statistics
+            # Reduce to 2 dims: ndraws x n_features
+            val = np.apply_along_axis(stat, 1, posterior_predictive_draws)
+            if val.ndim > 1:
+                for v in val.T:
+                    pps_sum.append(v)
+            else:
+                pps_sum.append(val)
 
-        outfile = path_join("out", "priors.csv")
-        pd.DataFrame.from_dict(PRIORS).to_csv(outfile, index = False)
-        PIPELINE.log_artifact(outfile)
+        pps_sum = np.array(pps_sum).T
+        pps_sum = np.repeat((pps_sum,), n_chains, axis = 0).squeeze()
+        ref_table.append(pps_sum)
+    ref_table = np.concatenate(ref_table)
 
-        outfile = path_join("out", "summary.csv")
-        az.summary(trace).to_csv(outfile, index = False)
-        PIPELINE.log_artifact(outfile)
-        
+    # If multiple chains, then we have 3 dims 
+    # So, we need to reduce this to 2 dims
+    if n_chains > 1:
+        # n_model_types = model_types * n_summary_statistics
+        n_model_types, n_obs, n_features = ref_table.shape
+        ref_table = ref_table.reshape((n_model_types * n_obs, n_features))
+
+    obs_sum = []
+    for stat in STATISTIC_FUNCTIONS:
+        # Reduce to 1-dim: n_outputs * n_summary_statistics
+        val = np.apply_along_axis(stat, 0, Y_TEST)
+        if val.ndim > 1:
+            for v in val.T:
+                obs_sum.append(v)
+        else:
+            obs_sum.append(val)
+
+    obs_sum = np.hstack(obs_sum)
+    labels = np.repeat(np.arange(n_models), CONFIG.get("draws") * n_chains**2 )
+    
+    max_features = int(f_max_features * ref_table.shape[1])
+    classifier = RandomForestClassifier(
+        n_estimators = n_trees,
+        max_features = max_features,
+        bootstrap = True,
+        random_state = SEED
+    )
+
+    classifier.fit(ref_table, labels)
+
+    best_model_indx = int(classifier.predict([obs_sum]))
+    best_model = STATISTICS[best_model_indx]
+    pred_prob = classifier.predict_proba(ref_table)
+    pred_error = 1 - np.take(pred_prob.T, labels)
+
+    regressor = RandomForestRegressor(n_estimators = n_trees, random_state = SEED)
+    regressor.fit(ref_table, pred_error)
+    prob_best_model = 1 - regressor.predict([obs_sum])
+
+    return best_model, prob_best_model.item()
+
 def main():
     X_train_bounds = X_train_df.agg(['min', 'max'])
-    fit_model(X_train_bounds)
+
+    models = {}
+    for stat_distance in STATISTICS:
+        sum_stat, distance = stat_distance.split("_")
+        model = fit_model(X_train_bounds, sum_stat, distance)
+        models[stat_distance] = model
+
+    best_model, prob_best_model = select_model(models)
+    
+    outfile = path_join("out", "models_types.csv")
+    pd.DataFrame({ "models": STATISTICS }).to_csv(outfile, index = False)
+    PIPELINE.log_artifact(outfile)
+    
+    PIPELINE.log_param("draws", CONFIG.get("draws"))
+    PIPELINE.log_param("chains", CONFIG.get("chains"))
+    PIPELINE.log_param("seed", SEED)
+    PIPELINE.log_param("distribution", CONFIG.get("distribution"))
+    PIPELINE.log_param("best_model", best_model)
+    PIPELINE.log_metric("prob_best_model", prob_best_model)
 
     config_out = path_join("out", CONFIG_FILE)
     CONFIG.export(config_out)
