@@ -178,11 +178,27 @@ def fit_model(
 
     return model, trace
 
+def plot_feature_importances(ensemble, feature_names, outfile):
+    importances = ensemble.feature_importances_
+    importances_std = np.std([tree.feature_importances_ for tree in ensemble.estimators_], axis = 0)
+    forest_importances = pd.Series(importances, index = feature_names)
+
+    fig, ax = plt.subplots()
+    forest_importances.plot.bar(ax = ax, fontsize = 10, figsize = (10, 10))
+    ax.set_title("Feature importances")
+    ax.set_ylabel("Mean decrease in impurity")
+    fig.tight_layout()
+    fig.savefig(outfile, bbox_inches = 'tight')
+    return outfile
+
 def select_model(
-    models, n_trees = 1000, f_max_features = 0.5 
+    models, n_trees = 100, f_max_features = 0.5 
 ):
+    # Refer to https://bayesiancomputationbook.com/markdown/chp_08.html
+
     n_models = len(models)
     ref_table = []
+    n_trees = CONFIG.get("n_trees")
 
     for model, trace in models.values():
         obs_name = model.observed_RVs[0].name
@@ -192,7 +208,7 @@ def select_model(
         )
 
         # 3 dims if only one chain
-        # 4 dims if multiple chains
+        # 4 dims if multiple chains - reshape to 3 dims
         n_chains = 1
         posterior_predictive_draws = pps[obs_name].squeeze()
         if posterior_predictive_draws.ndim == 4:
@@ -201,7 +217,7 @@ def select_model(
 
         pps_sum = []
         for stat in STATISTIC_FUNCTIONS:
-            # n_features = n_outputs * n_summary_statistics
+            # n_features: n_outputs * n_summary_statistics
             # Reduce to 2 dims: ndraws x n_features
             val = np.apply_along_axis(stat, 1, posterior_predictive_draws)
             if val.ndim > 1:
@@ -211,16 +227,8 @@ def select_model(
                 pps_sum.append(val)
 
         pps_sum = np.array(pps_sum).T
-        pps_sum = np.repeat((pps_sum,), n_chains, axis = 0).squeeze()
         ref_table.append(pps_sum)
     ref_table = np.concatenate(ref_table)
-
-    # If multiple chains, then we have 3 dims 
-    # So, we need to reduce this to 2 dims
-    if n_chains > 1:
-        # n_model_types = model_types * n_summary_statistics
-        n_model_types, n_obs, n_features = ref_table.shape
-        ref_table = ref_table.reshape((n_model_types * n_obs, n_features))
 
     obs_sum = []
     for stat in STATISTIC_FUNCTIONS:
@@ -233,7 +241,8 @@ def select_model(
             obs_sum.append(val)
 
     obs_sum = np.hstack(obs_sum)
-    labels = np.repeat(np.arange(n_models), CONFIG.get("draws") * n_chains**2 )
+    labels = np.arange(n_models)
+    labels = np.repeat(labels, CONFIG.get("draws") * n_chains)
     
     max_features = int(f_max_features * ref_table.shape[1])
     classifier = RandomForestClassifier(
@@ -254,6 +263,16 @@ def select_model(
     regressor.fit(ref_table, pred_error)
     prob_best_model = 1 - regressor.predict([obs_sum])
 
+    feature_names = []
+    for stat in STATISTIC_FUNCTIONS:
+        for resp in GRAPEVINE_RESP:
+            feature_names.append(f"{stat.__name__} {resp}")
+    importance_plot = plot_feature_importances(classifier, feature_names, path_join("out", "model_feature_importance.png"))   
+    PIPELINE.log_artifact(importance_plot)
+    importance_plot = plot_feature_importances(regressor, feature_names, path_join("out", "model_probabilities_feature_importance.png"))    
+    PIPELINE.log_artifact(importance_plot)
+    PIPELINE.log_param("n_trees", n_trees)
+    
     return best_model, prob_best_model.item()
 
 def main():

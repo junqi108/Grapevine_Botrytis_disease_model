@@ -1,6 +1,6 @@
 chains: 2
 distribution: truncated_normal
-draws: 100
+draws: 3
 lr: 0.01
 num_epochs: 3000
 num_latents: 120

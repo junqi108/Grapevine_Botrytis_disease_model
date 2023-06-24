@@ -100,5 +100,6 @@ load_optimiser: false
 n_trials: 300
 
 draws: 100
-chains: 2
+chains: 4
 distribution: truncated_normal
+n_trees: 3000
