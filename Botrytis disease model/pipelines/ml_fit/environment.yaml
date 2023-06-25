@@ -22,7 +22,9 @@ dependencies:
   - xz=5.4.2
   - zlib=1.2.13
   - pip:
+      - absl-py==1.4.0
       - adagio==0.2.4
+      - aesara==2.9.0
       - aiofiles==23.1.0
       - aiohttp==3.8.4
       - aiohttp-cors==0.7.0
@@ -40,12 +42,14 @@ dependencies:
       - argon2-cffi-bindings==21.2.0
       - arviz==0.15.1
       - asttokens==2.2.1
+      - astunparse==1.6.3
       - async-timeout==4.0.2
       - asyncssh==2.13.1
       - atpublic==3.1.2
       - attrs==23.1.0
       - autoviz==0.1.720
       - backcall==0.2.0
+      - bayesflow==1.1.1
       - beautifulsoup4==4.12.2
       - billiard==3.6.4.0
       - bleach==6.0.0
@@ -102,7 +106,9 @@ dependencies:
       - dill==0.3.6
       - diskcache==5.6.1
       - distlib==0.3.6
+      - distributed==2023.5.1
       - distro==1.8.0
+      - dm-tree==0.1.8
       - docker==6.1.3
       - dpath==2.1.6
       - dtreeviz==2.2.1
@@ -114,6 +120,7 @@ dependencies:
       - dvc-render==0.5.3
       - dvc-studio-client==0.10.0
       - dvc-task==0.2.1
+      - elfi==0.8.6
       - emoji==2.5.0
       - entrypoints==0.4
       - etuples==0.3.9
@@ -130,6 +137,7 @@ dependencies:
       - flask==2.2.5
       - flask-simplelogin==0.1.2
       - flask-wtf==1.1.1
+      - flatbuffers==23.5.26
       - flatten-dict==0.4.2
       - flufl-lock==7.1.1
       - fonttools==4.39.4
@@ -139,13 +147,17 @@ dependencies:
       - fugue==0.8.4
       - fugue-sql-antlr==0.1.6
       - funcy==2.0
+      - gast==0.4.0
       - gevent==22.10.2
       - gitdb==4.0.10
       - gitpython==3.1.31
       - google-api-core==2.11.0
       - google-auth==2.19.1
+      - google-auth-oauthlib==1.0.0
+      - google-pasta==0.2.0
       - googleapis-common-protos==1.59.0
       - gpustat==1.1
+      - gpy==1.10.0
       - gpytorch==1.11
       - gradio==3.34.0
       - gradio-client==0.2.6
@@ -173,11 +185,13 @@ dependencies:
       - interpret==0.4.2
       - interpret-core==0.4.2
       - ipykernel==6.23.1
+      - ipyparallel==8.6.1
       - ipython==7.34.0
       - ipython-genutils==0.2.0
       - ipywidgets==7.7.5
       - iterative-telemetry==0.0.8
       - itsdangerous==2.1.2
+      - jax==0.4.13
       - jaxtyping==0.2.20
       - jedi==0.18.2
       - jinja2==3.1.2
@@ -194,10 +208,12 @@ dependencies:
       - jupyterlab-pygments==0.2.2
       - jupyterlab-widgets==1.1.4
       - kaleido==0.2.1
+      - keras==2.12.0
       - kiwisolver==1.4.4
       - kmodes==0.12.2
       - kombu==5.3.0
       - lazy-loader==0.2
+      - libclang==16.0.0
       - lightgbm==3.3.5
       - lime==0.2.0.1
       - linear-operator==0.5.0
@@ -218,6 +234,7 @@ dependencies:
       - mdurl==0.1.2
       - minikanren==1.0.3
       - mistune==2.0.5
+      - ml-dtypes==0.2.0
       - mlflow==1.30.1
       - mlxtend==0.22.0
       - mpmath==1.3.0
@@ -233,10 +250,12 @@ dependencies:
       - nbformat==5.9.0
       - nest-asyncio==1.5.6
       - networkx==3.1
+      - nflows==0.14
       - nltk==3.8.1
       - notebook==6.5.4
       - notebook-shim==0.2.3
       - numba==0.57.0
+      - numdifftools==0.9.41
       - numpy==1.23.0
       - nvidia-cublas-cu11==11.10.3.66
       - nvidia-cuda-cupti-cu11==11.7.101
@@ -254,6 +273,7 @@ dependencies:
       - omegaconf==2.3.0
       - opencensus==0.11.2
       - opencensus-context==0.1.3
+      - opt-einsum==3.3.0
       - optuna==3.2.0
       - orjson==3.9.0
       - oyaml==1.0
@@ -264,6 +284,7 @@ dependencies:
       - pandocfilters==1.5.0
       - panel==0.14.4
       - param==1.13.0
+      - paramz==0.9.5
       - parso==0.8.3
       - partd==1.4.0
       - pathspec==0.11.1
@@ -300,11 +321,14 @@ dependencies:
       - pygments==2.15.1
       - pygtrie==2.5.0
       - pyjwt==2.7.0
+      - pyknos==0.15.1
       - pymc==5.4.1
       - pynndescent==0.5.10
       - pynomaly==0.3.3
       - pyod==1.0.9
       - pyparsing==3.0.9
+      - pyro-api==0.1.2
+      - pyro-ppl==1.8.5
       - pyrsistent==0.19.3
       - pytensor==2.12.1
       - pytest==7.3.2
@@ -324,6 +348,7 @@ dependencies:
       - ray==2.4.0
       - regex==2023.6.3
       - requests==2.31.0
+      - requests-oauthlib==1.3.1
       - retrying==1.3.4
       - rich==13.4.1
       - rsa==4.9
@@ -331,6 +356,7 @@ dependencies:
       - ruamel-yaml-clib==0.2.7
       - s3transfer==0.6.1
       - salib==1.4.7
+      - sbi==0.21.0
       - schemdraw==0.15
       - scikit-image==0.21.0
       - scikit-learn==1.2.2
@@ -351,6 +377,7 @@ dependencies:
       - smart-open==6.3.0
       - smmap==5.0.0
       - sniffio==1.3.0
+      - sortedcontainers==2.4.0
       - soupsieve==2.4.1
       - sqlalchemy==1.4.48
       - sqlglot==15.2.0
@@ -366,8 +393,16 @@ dependencies:
       - tangled-up-in-unicode==0.2.0
       - tbats==1.1.3
       - tbb==2021.9.0
+      - tblib==2.0.0
       - tenacity==8.2.2
+      - tensorboard==2.12.3
+      - tensorboard-data-server==0.7.1
       - tensorboardx==2.6
+      - tensorflow==2.12.0
+      - tensorflow-estimator==2.12.0
+      - tensorflow-io-gcs-filesystem==0.32.0
+      - tensorflow-probability==0.20.1
+      - termcolor==2.3.0
       - terminado==0.17.1
       - textblob==0.17.1
       - threadpoolctl==3.1.0
@@ -406,7 +441,7 @@ dependencies:
       - werkzeug==2.2.3
       - widgetsnbextension==3.6.4
       - wordcloud==1.9.2
-      - wrapt==1.15.0
+      - wrapt==1.14.1
       - wtforms==3.0.1
       - wurlitzer==3.0.3
       - xarray==2023.5.0
@@ -418,6 +453,7 @@ dependencies:
       - ydata-profiling==4.2.0
       - yellowbrick==1.5
       - zc-lockfile==3.0.post1
+      - zict==3.0.0
       - zipp==3.15.0
       - zope-event==4.6
       - zope-interface==6.0

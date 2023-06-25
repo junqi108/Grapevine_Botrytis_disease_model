@@ -99,7 +99,7 @@ optimisation_sampler: tpse
 load_optimiser: false
 n_trials: 300
 
-draws: 100
+draws: 1000
 chains: 4
 distribution: truncated_normal
-n_trees: 3000
+n_trees: 1000
