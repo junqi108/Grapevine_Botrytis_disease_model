@@ -137,7 +137,7 @@ dependencies:
       - flask==2.2.5
       - flask-simplelogin==0.1.2
       - flask-wtf==1.1.1
-      - flatbuffers==23.5.26
+      - flatbuffers==2.0.7
       - flatten-dict==0.4.2
       - flufl-lock==7.1.1
       - fonttools==4.39.4
@@ -182,6 +182,7 @@ dependencies:
       - importlib-metadata==5.2.0
       - importlib-resources==5.12.0
       - iniconfig==2.0.0
+      - install==1.3.5
       - interpret==0.4.2
       - interpret-core==0.4.2
       - ipykernel==6.23.1
@@ -192,6 +193,7 @@ dependencies:
       - iterative-telemetry==0.0.8
       - itsdangerous==2.1.2
       - jax==0.4.13
+      - jaxlib==0.4.13
       - jaxtyping==0.2.20
       - jedi==0.18.2
       - jinja2==3.1.2

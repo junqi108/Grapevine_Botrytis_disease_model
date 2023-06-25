@@ -162,6 +162,10 @@ def save_model(study, X_test_df, output_dir: str):
     for col in X_test_df.drop(columns = "time_step").columns:
         PIPELINE.log_param(f"Ground truth {col}", X_test_df.iloc[0][col])
         
+    outfile = path_join("out", "ground_truth.csv")
+    X_test_df.query("time_step == 1").to_csv(outfile, index = False)
+    PIPELINE.log_artifact(outfile)
+
 def optimise_sim(model, likelihood, X_test_df, Y_test, scaler, X_train_bounds):
     sampler = get_sampler(OPTIMISER_NAME, SEED)
     n_jobs = CONFIG.get("n_jobs")

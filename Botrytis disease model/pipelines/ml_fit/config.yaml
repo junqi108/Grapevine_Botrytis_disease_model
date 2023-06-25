@@ -95,11 +95,24 @@ num_latents: 120
 num_epochs: 3000
 lr: 0.01
 
-optimisation_sampler: tpse
+optimisation_sampler: tpes
 load_optimiser: false
-n_trials: 300
+n_trials: 100
 
-draws: 1000
-chains: 4
+abc_statistic: mean
+abc_distance: gaussian
+abc_epsilon: 1
+draws: 100
+chains: 2
 distribution: truncated_normal
 n_trees: 1000
+
+nn_distribution: normal
+nn_sampling_algo: rejection # For neural likelihood estimation or ratio estimation
+nn_model: nsf # Neural spline flows
+nn_draws: 1000 # From the posterior predictive distribution
+nn_num_simulations: 1000
+nn_hidden_features: 120
+nn_num_transforms: 10
+nn_out_features: 64
+num_sbc_runs: 500

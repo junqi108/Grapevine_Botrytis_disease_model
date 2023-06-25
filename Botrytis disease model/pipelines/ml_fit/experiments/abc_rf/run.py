@@ -287,7 +287,7 @@ def main():
     best_model, prob_best_model = select_model(models)
     
     outfile = path_join("out", "models_types.csv")
-    pd.DataFrame({ "models": STATISTICS }).to_csv(outfile, index = False)
+    pd.DataFrame({ "models": STATISTICS }).to_csv(outfile)
     PIPELINE.log_artifact(outfile)
     
     PIPELINE.log_param("draws", CONFIG.get("draws"))
@@ -297,6 +297,10 @@ def main():
     PIPELINE.log_param("best_model", best_model)
     PIPELINE.log_metric("prob_best_model", prob_best_model)
 
+    outfile = path_join("out", "ground_truth.csv")
+    X_test_df.query("time_step == 1").to_csv(outfile, index = False)
+    PIPELINE.log_artifact(outfile)
+    
     config_out = path_join("out", CONFIG_FILE)
     CONFIG.export(config_out)
     PIPELINE.log_artifact(config_out)

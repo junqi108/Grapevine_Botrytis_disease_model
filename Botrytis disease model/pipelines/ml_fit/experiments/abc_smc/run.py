@@ -52,8 +52,13 @@ if __name__ == "__main__":
     MODEL, LIKELIHOOD = MODEL.to("cpu"), LIKELIHOOD.to("cpu")
     MAX_TIME_STEP = Y_test.shape[0] 
 
+    N_DRAWS = CONFIG.get("draws")
+    N_CHAINS = CONFIG.get("chains")
     DISTRIBUTION = CONFIG.get("distribution")
-
+    DISTANCE = CONFIG.get("abc_distance")
+    SUM_STAT = CONFIG.get("abc_statistic")
+    EPISILON = CONFIG.get("abc_epsilon")
+    
     PRIORS = []
 
 ##############################################
@@ -152,9 +157,9 @@ def fit_model(
             "Y_obs",
             simulator_model,
             params = params,
-            distance = "gaussian",
-            sum_stat = "median",
-            epsilon = 1,
+            distance = DISTANCE,
+            sum_stat = SUM_STAT,
+            epsilon = EPISILON,
             observed = Y_TEST,
         )
 
@@ -162,13 +167,12 @@ def fit_model(
     pgm_out = path_join("out", "model_graph.png")
     pgm.render(format = "png", directory = "out", filename = "model_graph")
     PIPELINE.log_artifact(pgm_out)
-    chains = CONFIG.get("chains")
 
     with model:
         trace = pm.sample_smc(
-            draws = CONFIG.get("draws"), 
+            draws = N_DRAWS, 
             # kernel = "abc",
-            chains = chains,
+            chains = N_CHAINS,
             cores = 1,
             compute_convergence_checks = True,
             return_inferencedata = True,
@@ -176,10 +180,13 @@ def fit_model(
             progressbar = True
         )
 
-        PIPELINE.log_param("draws", CONFIG.get("draws"))
-        PIPELINE.log_param("chains", CONFIG.get("chains"))
+        PIPELINE.log_param("draws", N_DRAWS)
+        PIPELINE.log_param("chains", N_CHAINS)
         PIPELINE.log_param("seed", SEED)
-        PIPELINE.log_param("distribution", CONFIG.get("distribution"))
+        PIPELINE.log_param("distribution", DISTRIBUTION)
+        PIPELINE.log_param("distance", DISTANCE)
+        PIPELINE.log_param("sum_stat", SUM_STAT)
+        PIPELINE.log_param("epsilon", EPISILON)
 
         textsize = 7
         for plot in ["trace", "rank_vlines", "rank_bars"]:
@@ -216,7 +223,11 @@ def fit_model(
 def main():
     X_train_bounds = X_train_df.agg(['min', 'max'])
     fit_model(X_train_bounds)
-
+    
+    outfile = path_join("out", "ground_truth.csv")
+    X_test_df.query("time_step == 1").to_csv(outfile, index = False)
+    PIPELINE.log_artifact(outfile)
+    
     config_out = path_join("out", CONFIG_FILE)
     CONFIG.export(config_out)
     PIPELINE.log_artifact(config_out)
