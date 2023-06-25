@@ -102,9 +102,9 @@ n_trials: 100
 abc_statistic: mean
 abc_distance: gaussian
 abc_epsilon: 1
-draws: 100
+draws: 200
 chains: 2
-distribution: truncated_normal
+distribution: normal
 n_trees: 1000
 
 nn_distribution: normal
@@ -116,3 +116,7 @@ nn_hidden_features: 120
 nn_num_transforms: 10
 nn_out_features: 64
 num_sbc_runs: 500
+
+bolfi_initial_evidence: 100
+bolfi_n_evidence: 200
+bolfi_sampler: metropolis #nuts

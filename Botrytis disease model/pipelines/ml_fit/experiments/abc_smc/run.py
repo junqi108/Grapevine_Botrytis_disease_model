@@ -108,7 +108,7 @@ def set_prior(col, lb, ub, sigma = None):
         prior["upper"] = ub
         return pm.Triangular(col, lower = lb, upper = ub, c = c)
 
-    if DISTRIBUTION == "truncated_normal":
+    if DISTRIBUTION == "normal":
         mu = (lb + ub) / 2
         sigma = (ub - lb) / 6
         lower = 0
