@@ -1,9 +1,9 @@
 bolfi_initial_evidence: 100
-bolfi_n_evidence: 200
+bolfi_n_evidence: 100
 bolfi_sampler: metropolis
-chains: 2
-distribution: normal
-draws: 200
+chains: 4
+distribution: laplace
+draws: 100
 lr: 0.01
 num_epochs: 3000
 num_latents: 120
