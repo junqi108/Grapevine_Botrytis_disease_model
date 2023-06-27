@@ -11,6 +11,13 @@ A mechanistic model for Botrytis cinerea on grapevine was developed. The model, 
 ## pipelines
 1. the R docker files:
    build and pull the docker image, enter into R local server, in this way, you can specify your own R version and packages
-   bash docker_up.sh, localhost, then in the R console activate renv, renv::restore(), renv::restore(), renv::init() or renv::activate()
-2. The MLflow pipeline, create conda environment:
+   bash docker_up.sh, localhost, then in the R console activate renv::activate(), renv::hydrate()
+2. The MLflow pipeline
+   -conda env create -f environment.yaml
+   -conda activate myenv
+   -pip install -r requirements.txt
+   -install all conflicts ones manually
+
+   
+
    
