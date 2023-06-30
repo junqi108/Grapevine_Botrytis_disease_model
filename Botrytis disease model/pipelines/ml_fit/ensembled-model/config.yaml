@@ -1,0 +1,68 @@
+MLFLOW_EXPERIMENT_NAME: ml_fit_ensemble_regression
+MLFLOW_TRACKING_URI: http://127.0.0.1:5000
+author: default user
+categorical_features:
+- Site
+- pruning
+- year
+data_split_shuffle: true
+data_split_stratify: false
+early_stopping: asha
+early_stopping_max_iters: 10
+ensemble_methods: !!set
+  bagging: null
+  blending: null
+  boosting: null
+  stacking: null
+fold: 3
+fold_groups: Site
+fold_shuffle: true
+fold_strategy: kfold
+ignore_features:
+- Variety
+- Date
+- doy
+- doy.july1st
+- previous.season
+- season
+- first_sev1
+- end_sev1
+- first_sev23
+- end_sev23
+- tmean_sev1
+- tmax_sev1
+- wetness_sev1
+- WD_sev1
+- rain_sev1
+- tmean_sev23
+- tmax_sev23
+- wetness_sev23
+- WD_sev23
+imputation_type: simple
+iterative_imputation_iters: 5
+log_data: true
+log_experiment: true
+log_plots: true
+log_profile: true
+low_variance_threshold: 0
+meta_model: dt
+model_description: Regression model for Botrytis disease modelling.
+n_estimators: 5
+n_iter: 3
+n_jobs: -1
+n_select: 10
+normalize: true
+normalize_method: zscore
+numeric_imputation: knn
+prediction_interval: 0.05
+preprocess: true
+profile: true
+random_seed: 100
+run_distributed: false
+search_algorithm: random
+search_library: scikit-learn
+target: Severity
+target_metric: MSE
+train_size: 0.7
+turbo: true
+use_gpu: false

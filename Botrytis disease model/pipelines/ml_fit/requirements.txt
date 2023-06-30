@@ -11,7 +11,7 @@ alembic==1.11.1
 altair==5.0.1
 amqp==5.1.1
 ansi2html==1.8.0
-antlr4-python3-runtime==4.11.1
+antlr4-python3-runtime==4.*
 anyio==3.7.0
 appdirs==1.4.4
 argon2-cffi==21.3.0

@@ -57,16 +57,24 @@ categorical_features:
 ignore_features: 
   - Variety
   - Date
-  - first_sev1
-  - end_sev23
-  - end_sev1
-  - first_sev23
-  - end_sev23
   - doy
   - doy.july1st
   - previous.season
   - season
-
+  - first_sev1
+  - end_sev1
+  - first_sev23
+  - end_sev23
+  - tmean_sev1
+  - tmax_sev1
+  - wetness_sev1
+  - WD_sev1
+  - rain_sev1
+  - tmean_sev23
+  - tmax_sev23
+  - wetness_sev23
+  - WD_sev23
+  
 anomaly_model: iforest
 contamination_fraction: 0.05
 

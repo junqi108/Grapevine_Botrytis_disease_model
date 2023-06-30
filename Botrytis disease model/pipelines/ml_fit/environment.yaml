@@ -1,4 +1,4 @@
-name: gp
+name: gbt
 channels:
   - defaults
 dependencies:
