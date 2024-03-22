@@ -1,22 +1,29 @@
-ARG BASE_IMAGE
+ARG PYTHON_TAG
 
-FROM $BASE_IMAGE
+FROM python:${PYTHON_TAG} as base
 
-ENV DEBIAN_FRONTEND=noninteractive
+WORKDIR /workspace
 
-RUN install2.r --error --skipinstalled renv
+ENV PYTHONDONTWRITEBYTECODE 1
 
-RUN apt update \ 
-    && apt install libxt-dev curl jags -y \ 
-    && rm -rf /var/lib/apt/lists/*
+ENV PYTHONUNBUFFERED 1
 
-ARG QUARTO_VERSION
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends build-essential libpq-dev graphviz  \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* \
+    && rm -rf /tmp/downloaded_packages
 
-RUN mkdir -p /opt/quarto/${QUARTO_VERSION} \
-    && curl -o quarto.tar.gz -L "https://github.com/quarto-dev/quarto-cli/releases/download/v${QUARTO_VERSION}/quarto-${QUARTO_VERSION}-linux-amd64.tar.gz" \
-    && tar -zxvf quarto.tar.gz -C "/opt/quarto/${QUARTO_VERSION}" --strip-components=1 \
-    && rm quarto.tar.gz \
-    && rm -rf /usr/local/bin/quarto \
-    && ln -s "/opt/quarto/${QUARTO_VERSION}/bin/quarto" /usr/local/bin/quarto
+FROM base as build
 
-RUN quarto install tinytex 
+COPY requirements.txt ./
+
+RUN pip wheel --no-cache-dir --no-deps --wheel-dir /workspace/wheels -r requirements.txt
+
+FROM base as runtime
+
+COPY --from=build /workspace/wheels /wheels
+
+COPY --from=build /workspace/requirements.txt .
+
+RUN pip install --no-cache /wheels/*

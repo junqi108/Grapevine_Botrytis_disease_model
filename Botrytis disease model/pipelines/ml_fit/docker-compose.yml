@@ -1,6 +1,19 @@
 version: "3.7"
 
 services:
+
+  python:
+    image: ${GITHUB_CONTAINER_REPO}:${GITHUB_CONTAINER_REPO_TAG}
+    env_file: .env
+    working_dir: /workspace
+    build:
+      args:
+        PYTHON_TAG: $PYTHON_TAG
+    volumes:
+      - ./experiments:/workspace/experiments
+      - ./ml_fit_lib:/workspace/ml_fit_lib
+      - ./scripts:/workspace/scripts
+
   grafana:
     image: "grafana/grafana:${GRAFANA_TAG}"
     container_name: "${PROJECT_NAME}-grafana"
@@ -45,7 +58,7 @@ services:
 
 networks:
   default:
-      name: $PROJECT_NAME
+    name: $PROJECT_NAME
 
 volumes:
   grafana-data: {}
