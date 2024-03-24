@@ -1,0 +1,13 @@
+lr: 0.01
+nn_distribution: normal
+nn_draws: 1000
+nn_hidden_features: 120
+nn_model: nsf
+nn_num_simulations: 1000
+nn_num_transforms: 10
+nn_out_features: 64
+nn_sampling_algo: rejection
+num_epochs: 3000
+num_latents: 120
+num_sbc_runs: 500
+random_seed: 100

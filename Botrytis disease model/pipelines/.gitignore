@@ -1,0 +1,20 @@
+# Grapevine data
+grape_data.csv
+grape_params.csv
+*.png
+t*_grapevine_params.csv
+t*_grapevine_data.csv
+diagnostics.csv
+ground_truth.csv
+
+# Torch
+*.pth
+*.pkl
+trial_results.csv
+summary.csv
+priors.csv
+model_graph
+models_types.csv
+sbi-logs
+
+mlruns

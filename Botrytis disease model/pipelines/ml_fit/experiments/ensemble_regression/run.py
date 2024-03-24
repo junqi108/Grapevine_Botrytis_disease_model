@@ -12,7 +12,9 @@ sys.path.insert(0, os.path.abspath(base_dir))
 from ml_fit_lib.config import get_config
 from ml_fit_lib.constants import *
 from ml_fit_lib.data import Data
-from ml_fit_lib.experiment import setup_experiment, regression_experiment, reg_predict_model, get_prediction_intervals
+from ml_fit_lib.experiment import (
+    setup_experiment, regression_experiment, 
+    get_conformal_regressor, get_prediction_intervals)
 from ml_fit_lib.mlops import MLFlowPipeline
 
 ##############################################
@@ -37,10 +39,16 @@ def main():
     
     final_model = regression_experiment(CONFIG, RUN_DISTRIBUTED, tmp_dir)
 
+    conformal_model = get_conformal_regressor(final_model, df , CONFIG)
+    for alpha in [0.01, 0.05, 0.1]:
+        preds, lb, ub = get_prediction_intervals(conformal_model, df, CONFIG, alpha = alpha)
+        PIPELINE.log_prediction_intervals(
+            lb, ub, target = CONFIG.get("target"), alpha = alpha
+        )
+
     actual = df[CONFIG.get("target")].values
-    preds, lb, ub = get_prediction_intervals(final_model, df , CONFIG)
-    PIPELINE.log_predictions(preds, actual, lb, ub, target = CONFIG.get("target"), pi = CONFIG.get("prediction_interval"))
-    
+    PIPELINE.log_predictions(preds, actual, target = CONFIG.get("target"))
+      
     config_out = path_join(tmp_dir, CONFIG_FILE)
     CONFIG.export(config_out)
     PIPELINE.log_artifact(config_out)

@@ -1,0 +1,8 @@
+chains: 2
+distribution: truncated_normal
+draws: 20
+lr: 0.01
+n_trees: 1000
+num_epochs: 3000
+num_latents: 120
+random_seed: 100

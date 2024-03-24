@@ -1,0 +1,26 @@
+# R
+.Renviron
+r_home
+*.rds
+
+# Data
+data
+.git
+
+# RStudio
+notebooks
+renv
+.quarto
+_site
+doc_cache
+doc_files
+.config
+.local
+rstudio
+_extensions
+
+# Environment
+.env
+
+# Apptainer
+*.sif

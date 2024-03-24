@@ -1,0 +1,5 @@
+name: optimisation
+
+entry_points:
+  main:
+    command: python run.py

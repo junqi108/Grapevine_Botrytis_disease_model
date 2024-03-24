@@ -1,0 +1,9 @@
+dirichlet_alpha_rate: 1.0
+dirichlet_alpha_shape: 1.0
+dirichlet_lr: 0.001
+dirichlet_n_components: 20
+dirichlet_n_particles: 25
+dirichlet_n_vi_samples: 200
+dirichlet_post_draws: 200
+dirichlet_vi_method: svgd
+random_seed: 100

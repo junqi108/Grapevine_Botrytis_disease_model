@@ -1,0 +1,10 @@
+abc_distance: gaussian
+abc_epsilon: 1
+abc_statistic: mean
+chains: 2
+distribution: truncated_normal
+draws: 10
+lr: 0.01
+num_epochs: 3000
+num_latents: 120
+random_seed: 100

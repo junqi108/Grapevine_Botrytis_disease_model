@@ -1,6 +1,6 @@
 target: Severity
 target_metric: MSE
-n_select: 10
+n_select: 2
 turbo: true
 train_size: 0.7
 preprocess: true
@@ -12,7 +12,7 @@ normalize: true
 normalize_method: zscore
 data_split_shuffle: true
 fold_strategy: kfold
-fold: 3
+fold: 5
 fold_shuffle: true
 fold_groups: Site
 n_jobs: -1
@@ -28,8 +28,8 @@ data_split_stratify: false
 #   - Site
 
 run_distributed: false
-n_iter: 3
-n_estimators: 5
+n_iter: 2
+n_estimators: 2
 search_algorithm: random
 distributed_search_algorithm: optuna
 search_library: scikit-learn 
@@ -47,7 +47,7 @@ ensemble_methods:
   - bagging
   - blending
   - stacking
-  
+
 meta_model: dt
 
 categorical_features:
@@ -57,27 +57,75 @@ categorical_features:
 ignore_features: 
   - Variety
   - Date
+  - first_sev1
+  - end_sev23
+  - end_sev1
+  - first_sev23
+  - end_sev23
   - doy
   - doy.july1st
   - previous.season
   - season
-  - first_sev1
-  - end_sev1
-  - first_sev23
-  - end_sev23
-  - tmean_sev1
-  - tmax_sev1
-  - wetness_sev1
-  - WD_sev1
-  - rain_sev1
-  - tmean_sev23
-  - tmax_sev23
-  - wetness_sev23
-  - WD_sev23
-  
+
 anomaly_model: iforest
 contamination_fraction: 0.05
 
 clustering_model: kmeans
 num_clusters: 7
 clustering_ground_truth: Site
+
+numeric_imputation_target: linear
+numeric_imputation_exogenous: linear
+fold_strategy_ts: sliding
+fh: 100
+seasonal_period: null
+ignore_seasonality_test: true
+sp_detection: auto
+max_sp_to_consider: 4
+remove_harmonics: false
+harmonic_order_method: harmonic_max
+num_sps_to_use: 1
+coverage: 0.95
+enforce_exogenous: false
+target_metric_ts: SMAPE
+scale_target: zscore
+transform_target: box-cox
+
+num_latents: 120
+num_epochs: 3000
+lr: 0.01
+
+optimisation_sampler: tpes
+load_optimiser: false
+n_trials: 100
+
+abc_statistic: mean
+abc_distance: gaussian
+abc_epsilon: 1
+draws: 100
+chains: 4
+distribution: laplace
+n_trees: 1000
+
+nn_distribution: normal
+nn_sampling_algo: rejection # For neural likelihood estimation or ratio estimation
+nn_model: nsf # Neural spline flows
+nn_draws: 1000 # From the posterior predictive distribution
+nn_num_simulations: 1000
+nn_hidden_features: 120
+nn_num_transforms: 10
+nn_out_features: 64
+num_sbc_runs: 500
+
+bolfi_initial_evidence: 100
+bolfi_n_evidence: 100
+bolfi_sampler: metropolis #nuts
+
+dirichlet_n_components: 20
+dirichlet_vi_method: svgd 
+dirichlet_n_vi_samples: 200
+dirichlet_n_particles: 25
+dirichlet_lr: 0.001
+dirichlet_post_draws: 200
+dirichlet_alpha_shape: 1.0
+dirichlet_alpha_rate: 1.0

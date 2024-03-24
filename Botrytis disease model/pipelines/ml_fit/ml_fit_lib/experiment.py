@@ -118,7 +118,7 @@ def regression_experiment(config, run_distributed, tmp_dir):
     save_model(final_model, config)
     return final_model
 
-def get_prediction_intervals(model, data, config):
+def get_conformal_regressor(model, data, config):
     df = data.drop(columns = config.get("ignore_features"))
     target = config.get("target")
     X = df.drop(columns = target)
@@ -126,8 +126,17 @@ def get_prediction_intervals(model, data, config):
 
     mapie_model = MapieRegressor(model, method = "minmax", cv = config.get("fold"))
     mapie_model.fit(X, y)
+    return mapie_model
 
-    preds, intervals = mapie_model.predict(X, alpha = config.get("prediction_interval"))
+def get_prediction_intervals(conformal_model, data, config, alpha = None):
+    if alpha is None:
+        alpha = config.get("prediction_interval")
+
+    df = data.drop(columns = config.get("ignore_features"))
+    target = config.get("target")
+    X = df.drop(columns = target)
+
+    preds, intervals = conformal_model.predict(X, alpha = alpha)
     lb = intervals[:, 0, 0].ravel()
     ub = intervals[:, 1, 0].ravel()
     return preds, lb, ub

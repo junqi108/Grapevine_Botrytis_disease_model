@@ -1,0 +1,65 @@
+version: "3.7"
+
+services:
+
+  python:
+    image: ${GITHUB_CONTAINER_REPO}:${GITHUB_CONTAINER_REPO_TAG}
+    env_file: .env
+    working_dir: /workspace
+    build:
+      args:
+        PYTHON_TAG: $PYTHON_TAG
+    volumes:
+      - ./experiments:/workspace/experiments
+      - ./ml_fit_lib:/workspace/ml_fit_lib
+      - ./scripts:/workspace/scripts
+
+  grafana:
+    image: "grafana/grafana:${GRAFANA_TAG}"
+    container_name: "${PROJECT_NAME}-grafana"
+    hostname: grafana
+    restart: unless-stopped
+    stop_grace_period: 10s
+    env_file: .env
+    user: '0'
+    ports:
+      - "${GRAFANA_PORT}:3000"
+    environment:
+      GF_INSTALL_PLUGINS: $GF_INSTALL_PLUGINS
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./services/grafana/grafana.ini:/etc/grafana/grafana.ini
+
+  postgres:
+    image: "postgres:${POSTGRES_TAG}"
+    container_name: "${PROJECT_NAME}-postgres"
+    hostname: grafana
+    restart: unless-stopped
+    stop_grace_period: 10s
+    env_file: .env
+    environment:
+      POSTGRES_PASSWORD: $DB_PASSWORD
+      POSTGRES_DB: $DB_NAME
+      POSTGRES_USER: $DB_USER
+    ports:
+      - ${DB_PORT}:5432
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  adminer:
+    image: "adminer:${ADMINER_TAG}"
+    container_name: "${PROJECT_NAME}-adminer"
+    hostname: grafana
+    restart: unless-stopped
+    stop_grace_period: 10s
+    env_file: .env
+    ports:
+      - ${ADMINER_PORT}:8080
+
+networks:
+  default:
+    name: $PROJECT_NAME
+
+volumes:
+  grafana-data: {}
+  postgres-data: {}
