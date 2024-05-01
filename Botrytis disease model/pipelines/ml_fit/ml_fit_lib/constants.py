@@ -5,8 +5,8 @@ BASE_DIR = path_join("..", "..")
 
 # Data
 DATA_DIR = "data"
-DATA_FILE = path_join("..", BASE_DIR, DATA_DIR, "sauvignon_blanc_severity_calc.csv")
-OUT_DIR = path_join("..", BASE_DIR, DATA_DIR)
+DATA_FILE = path_join(BASE_DIR, DATA_DIR, "sauvignon_blanc_severity_calc.csv")
+OUT_DIR = path_join(BASE_DIR, DATA_DIR)
 
 # Grapevine
 GRAPEVINE_PARAMS_FILE = path_join("..", BASE_DIR, DATA_DIR, "grape_params.csv")
