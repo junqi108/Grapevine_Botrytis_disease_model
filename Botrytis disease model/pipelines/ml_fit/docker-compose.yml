@@ -13,6 +13,9 @@ services:
       - ./experiments:/workspace/experiments
       - ./ml_fit_lib:/workspace/ml_fit_lib
       - ./scripts:/workspace/scripts
+      - ./.env:/workspace/.env
+      - ./config.yaml:/workspace/config.yaml
+      - ./data:/workspace/data
 
   mlflow:
     image: ${GITHUB_CONTAINER_REPO}:${GITHUB_CONTAINER_REPO_TAG}
